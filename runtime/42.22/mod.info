@@ -1,0 +1,13 @@
+name=[B42] MP/SP Foraging System Reworked (WIP)
+id=B42MPSPForagingSystemReworked_WIP
+author=Antikristianos
+description=World-integration candidate for independent Foraging stock storage, chunk lifecycle and targeted light measurements. Regular Vanilla finds are retained during this first integration gate.
+icon=../common/icon.png
+require=\ZombieBuddy
+javaJarFile=media/java/B42MPSPForagingSystemReworked.jar
+javaPkgName=antikristianos.foraging
+ZBVersionMin=2.3.2
+modversion=0.1.1
+versionMin=42.22.0
+category=Gameplay
+incompatible=B42MPSPForagingSystemReworked

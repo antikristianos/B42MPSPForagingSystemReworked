@@ -1,0 +1,99 @@
+{
+  "JavaRelease": 17,
+  "JarName": "B42MPSPForagingSystemReworked.jar",
+  "AdditionalClasspath": [],
+  "Entries": [
+    {
+      "Path": "antikristianos/foraging/JsonStockStore.class",
+      "Size": 14497,
+      "Sha256": "C98024C921F73C000B05D84B8E1C8B516E9B9F5FB3FE0748CF1E69C9521DEB55"
+    },
+    {
+      "Path": "antikristianos/foraging/LightQueries$Request.class",
+      "Size": 1935,
+      "Sha256": "0053E59F075C497BB199B92B419E75E445F644CA587E7410E9EE4EF1DD85AADC"
+    },
+    {
+      "Path": "antikristianos/foraging/LightQueries.class",
+      "Size": 1866,
+      "Sha256": "07C003EDAF183715D229DBEA48D78AF68271C6CBB75DDF460255E7E9CD02A349"
+    },
+    {
+      "Path": "antikristianos/foraging/Main.class",
+      "Size": 758,
+      "Sha256": "9527C1D237F78DB75A009109D91DF6C87B0AE4F8FC675899272175B81451F4A8"
+    },
+    {
+      "Path": "antikristianos/foraging/PatchChunkUnload.class",
+      "Size": 888,
+      "Sha256": "06883BFEFAC9E59A348A9E03D8035D741BEF8FE80E0B00441A446FFC42172165"
+    },
+    {
+      "Path": "antikristianos/foraging/PatchLocalQuit.class",
+      "Size": 697,
+      "Sha256": "0D9E0704883FB3B1DFA7EEA017E030AC94793DDDF551418154A4CFB3D847FB51"
+    },
+    {
+      "Path": "antikristianos/foraging/PatchServerQuit.class",
+      "Size": 921,
+      "Sha256": "5B03BC60C02393ED52A910B592C3DFCDBC4E6B01249D20E953CD035B62F0CE23"
+    },
+    {
+      "Path": "antikristianos/foraging/PoolProfiles.class",
+      "Size": 3316,
+      "Sha256": "14E0D5F7AC390BF4A6FFEE46338EED533B12ACD5DD6640DA4B5ACF1ADDC1CB36"
+    },
+    {
+      "Path": "antikristianos/foraging/RuntimeBridge.class",
+      "Size": 9818,
+      "Sha256": "2B8680FAD10B05A83D01041DD85EB45CD39666E2532A64CC43FDA9675CEA508B"
+    },
+    {
+      "Path": "antikristianos/foraging/StockService$Chunk.class",
+      "Size": 1546,
+      "Sha256": "F7B6F6083494306F589223B63C08D4C1D3FA203BB010386909D06D72CDB5A855"
+    },
+    {
+      "Path": "antikristianos/foraging/StockService$Find.class",
+      "Size": 1059,
+      "Sha256": "5D6594E11477490CA9649342D608E1FB4903BB3C97B81FF9E0C62CF1822B5A3C"
+    },
+    {
+      "Path": "antikristianos/foraging/StockService$Issuer.class",
+      "Size": 363,
+      "Sha256": "1EE6920A9B732D3EFE940682B114B0A0EA92CE9706A54CBF2BC93A5BA2450657"
+    },
+    {
+      "Path": "antikristianos/foraging/StockService.class",
+      "Size": 8667,
+      "Sha256": "F9DD35CCA3ED185339C2A4F16657292DA76360531FD25F272762B3BF46888146"
+    },
+    {
+      "Path": "antikristianos/foraging/WorldTime.class",
+      "Size": 2487,
+      "Sha256": "BC3DF2A582D8B734A6411401576EAF9736223038F8A7D84118D64911B5DAEEC1"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneStock$Category.class",
+      "Size": 2126,
+      "Sha256": "D4DBD1EB3E2005221F5F17B2D33CBF3FAA461DF89C474341EB92E3D3EA1210E4"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneStock.class",
+      "Size": 8281,
+      "Sha256": "08367767141506A7626541DA30D77E6F0CBCF0FE550B12334E27EFBB7FD01D12"
+    }
+  ],
+  "Dependencies": [
+    {
+      "Path": "projectzomboid.jar",
+      "Size": 66254409,
+      "Sha256": "90C54B84EBC160AE053CBEFE30C7713826CA4FDB4934FDE53C9EBDE0FF9892F3"
+    },
+    {
+      "Path": "ZombieBuddy.jar",
+      "Size": 12491692,
+      "Sha256": "79120880FDA051718082BD9BF0C2C2B639450AE73641FDB4631750221A57B208"
+    }
+  ]
+}
