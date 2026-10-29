@@ -3,12 +3,12 @@
   "Project": "B42MPSPForagingSystemReworked",
   "Repository": "antikristianos/B42MPSPForagingSystemReworked",
   "Branch": "wip",
-  "Tag": "wip-1.63",
+  "Tag": "wip-1.64",
   "ModVersion": "0.1.1",
-  "CollectionVersion": "1.63",
+  "CollectionVersion": "1.64",
   "WorkshopId": 3802764936,
   "WorkshopUrl": "https://steamcommunity.com/sharedfiles/filedetails/?id=3802764936",
-  "UploadManifestSha256": "2DF2A9D193786BC163CE4EA9E9B6232EE0819F421B726E8CA65CB59859AB0AD7",
+  "UploadManifestSha256": "E62B8E2B4F740DC36F534BFD4140B7ED7918454ED930F7A73CB028DD35FC94F5",
   "Artifact": {
     "Path": "mods/B42MPSPForagingSystemReworked_WIP/42.22/media/java/B42MPSPForagingSystemReworked.jar",
     "Size": 32814,
@@ -33,7 +33,7 @@
     {
       "Path": "build.json",
       "Size": 3395,
-      "Sha256": "131B408AE54029049EE1EFA92908E688DDEF00526D208F7646FDB7A244788657"
+      "Sha256": "D8A979A4988A1F8C469B498419DBB5837C19964FDC1604526B0D9FD870C776E4"
     },
     {
       "Path": "build.ps1",
