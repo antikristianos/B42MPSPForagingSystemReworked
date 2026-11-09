@@ -5,8 +5,8 @@
   "Entries": [
     {
       "Path": "antikristianos/foraging/JsonStockStore.class",
-      "Size": 14497,
-      "Sha256": "C98024C921F73C000B05D84B8E1C8B516E9B9F5FB3FE0748CF1E69C9521DEB55"
+      "Size": 14736,
+      "Sha256": "BC449D61D060D5C23E14F18D654ABEEBE1461A267B5C593B8DF90185D0E79EF4"
     },
     {
       "Path": "antikristianos/foraging/LightQueries$Request.class",
@@ -21,7 +21,17 @@
     {
       "Path": "antikristianos/foraging/Main.class",
       "Size": 758,
-      "Sha256": "9527C1D237F78DB75A009109D91DF6C87B0AE4F8FC675899272175B81451F4A8"
+      "Sha256": "DBE344A4B264972918C5BCB77201A99C72179E77D01A87BC0894B59B05ECB40A"
+    },
+    {
+      "Path": "antikristianos/foraging/NativeZones$1.class",
+      "Size": 2612,
+      "Sha256": "E38FFE84A4972FE105301797FF6847A098A48A19A3211248C50C867F7913C971"
+    },
+    {
+      "Path": "antikristianos/foraging/NativeZones.class",
+      "Size": 13493,
+      "Sha256": "3CCB4593169868ED2B45E380FE31387957D7A37855D8992052EB9A71FDD826F4"
     },
     {
       "Path": "antikristianos/foraging/PatchChunkUnload.class",
@@ -44,9 +54,14 @@
       "Sha256": "14E0D5F7AC390BF4A6FFEE46338EED533B12ACD5DD6640DA4B5ACF1ADDC1CB36"
     },
     {
+      "Path": "antikristianos/foraging/RuntimeBridge$1.class",
+      "Size": 2676,
+      "Sha256": "094B5F0A32887247356F2C324BB9219BD02F398D43987F9852A5B393527F379E"
+    },
+    {
       "Path": "antikristianos/foraging/RuntimeBridge.class",
-      "Size": 9818,
-      "Sha256": "2B8680FAD10B05A83D01041DD85EB45CD39666E2532A64CC43FDA9675CEA508B"
+      "Size": 10617,
+      "Sha256": "742B11D60762260E9AC60BABD04E9A34CD363A7C1068777ABACA8404A31CCA15"
     },
     {
       "Path": "antikristianos/foraging/StockService$Chunk.class",
@@ -65,13 +80,58 @@
     },
     {
       "Path": "antikristianos/foraging/StockService.class",
-      "Size": 8667,
-      "Sha256": "F9DD35CCA3ED185339C2A4F16657292DA76360531FD25F272762B3BF46888146"
+      "Size": 9679,
+      "Sha256": "80B41EF8068FF919B3784D4EC89472FD35689B5DE63D16355AD3B8485AB77587"
     },
     {
       "Path": "antikristianos/foraging/WorldTime.class",
       "Size": 2487,
       "Sha256": "BC3DF2A582D8B734A6411401576EAF9736223038F8A7D84118D64911B5DAEEC1"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneCatalog$Bounds.class",
+      "Size": 2023,
+      "Sha256": "217E4D3D21FB68235817FB03DB86B4700AA0C6C4B76D8363D0D05C341A66E136"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneCatalog$Contains.class",
+      "Size": 335,
+      "Sha256": "139EF33E4400277A3659170CADAFA46EC53582596586FBD9C8170129C2DAFD3D"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneCatalog$Definition.class",
+      "Size": 2313,
+      "Sha256": "24DA8737251B5BCE774A2D152C778FD454FE08AA08C107C72C4126E3A7F7988C"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneCatalog$Listener.class",
+      "Size": 358,
+      "Sha256": "25F91D7C30E92FCC547D26176F237E3E2E062BD55196BA7DB70E4EFF89D2F82C"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneCatalog$Pending.class",
+      "Size": 1024,
+      "Sha256": "1B9214F4C9D91C8FE14E5AEB5DAB52DFF7ED70E1FF29828141091BDAA718B0A2"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneCatalog$Shape.class",
+      "Size": 3061,
+      "Sha256": "EFC7FD5DA85A0A2BB2648A0BC2065219E731E26869B16E262B6BE042D4300C16"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneCatalog$Source.class",
+      "Size": 632,
+      "Sha256": "9CE88D4FF64DDC75A6E6A2424DD59AB7424211154EA62F2E51E37F0F1E49B31A"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneCatalog$View.class",
+      "Size": 334,
+      "Sha256": "DE3EB92D75347D56D0498C42051F981D035F3B321182A8EBECD06395B71C34C1"
+    },
+    {
+      "Path": "antikristianos/foraging/ZoneCatalog.class",
+      "Size": 7658,
+      "Sha256": "3CB1D977C8D7EADADBAAAFE88D2690B2FBDAE19EF96BA66EBD998A518A0B9DDD"
     },
     {
       "Path": "antikristianos/foraging/ZoneStock$Category.class",

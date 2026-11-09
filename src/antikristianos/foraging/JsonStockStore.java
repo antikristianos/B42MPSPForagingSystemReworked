@@ -74,6 +74,14 @@ public final class JsonStockStore {
         if(Files.isSymbolicLink(file)) throw new IOException("symbolic working file");
         Files.writeString(file,data.toString(2)+"\n",java.nio.charset.StandardCharsets.UTF_8);
     }
+    public void removeWorking(String id) throws IOException {
+        if(id==null||!id.matches("[0-9a-f]{64}"))throw new IOException("invalid zone key");
+        Path dir=root.resolve("working").resolve(id.substring(0,2));
+        if(!Files.exists(dir))return;
+        Path path=safeDirectory(dir).resolve(id+".tmp");
+        if(Files.isSymbolicLink(path))throw new IOException("symbolic working file");
+        Files.deleteIfExists(path);
+    }
     private JSONObject encode(ZoneStock stock) {
         JSONObject data=base("zone").put("snapshotNumber",stock.generation).put("worldId",worldId).put("zoneId",stock.id)
             .put("source",new JSONObject().put("kind","vanilla").put("map",stock.source).put("biome",stock.biome).put("geometryKey",stock.geometry).put("effectiveLandAreaTiles",stock.area).put("biomeRefillPercent",stock.biomePercent))

@@ -11,16 +11,16 @@ import zombie.Lua.LuaManager;
 import zombie.characters.IsoPlayer;
 import zombie.iso.IsoChunk;
 import zombie.iso.IsoWorld;
-import zombie.iso.zones.Zone;
 import zombie.network.GameClient;
 
-/** First integration gate: real world identity, native lookup/unload and a light measurement roundtrip.
- * Regular Vanilla findings are intentionally not replaced before this gate is validated. */
+/** Native resource-zone integration. Regular Vanilla findings remain active during zone validation. */
 @Exposer.LuaClass(name="B42ForagingBridge")
 public final class RuntimeBridge {
     private RuntimeBridge() {}
     private static JsonStockStore store;
     private static StockService service;
+    private static NativeZones nativeZones;
+    private static ZoneCatalog catalog;
     private static Path currentSave;
     private static WorldTime lastTime;
     private static LightQueries lights=new LightQueries();
@@ -41,7 +41,7 @@ public final class RuntimeBridge {
             if(!gameVersion.equals("42.22")&&!gameVersion.startsWith("42.22.")) throw new IllegalStateException("unsupported game build "+gameVersion);
             WorldTime now=clock();
             store=new JsonStockStore(save,now);service=new StockService(store);currentSave=save;lastTime=now;
-            lights=new LightQueries();observedChunks.clear();observed.clear();measured.clear();failureLogged=false;
+            lights=new LightQueries();observedChunks.clear();observed.clear();measured.clear();failureLogged=false;nativeZones=null;catalog=null;
             log("WORLD_READY version="+Main.VERSION+" worldId="+store.worldId+" anchor="+store.anchor.hours()+" namespace="+JsonStockStore.NAMESPACE);
             return true;
         } catch(Exception failure) {error("world initialization",failure);return false;}
@@ -51,19 +51,29 @@ public final class RuntimeBridge {
         try {
             int x=(int)Math.floor(player.getX()),y=(int)Math.floor(player.getY()),z=(int)Math.floor(player.getZ());
             observedChunks.add(StockService.Chunk.at(x,y));
-            var zones=IsoWorld.instance.getMetaGrid().getZonesAt(x,y,0);
-            KahluaTable forage=(KahluaTable)LuaManager.env.rawget("forageSystem");
-            KahluaTable definitions=forage==null?null:(KahluaTable)forage.rawget("zoneDefs");
+            if(nativeZones==null) {
+                nativeZones=new NativeZones(IsoWorld.instance.getMetaGrid(),IsoWorld.instance.getBiomeMap(),NativeZones.definitions());
+                catalog=new ZoneCatalog(store,service,nativeZones,new ZoneCatalog.Listener(){
+                    public void ready(ZoneStock stock,boolean loaded){long total=stock.categories.values().stream().mapToLong(value->value.base).sum();log("ZONE_READY id="+stock.id+" biome="+stock.biome+" area="+stock.area+" base="+total+" categories="+stock.categories.size()+" loaded="+loaded+" source="+stock.source+" (stock only; Vanilla finds retained)");}
+                    public void failed(String zone,Exception failure){log("ZONE_BLOCKED id="+zone+" reason="+failure);}
+                });
+            }
             int rank=0;
-            for(int i=zones.size()-1;i>=0;i--) {
-                Zone zone=zones.get(i);
-                if(definitions==null||definitions.rawget(zone.getType())==null||!zone.contains(x,y,0)) continue;
-                String key=zone.getType()+":"+zone.getX()+":"+zone.getY()+":"+zone.getWidth()+":"+zone.getHeight()+":"+zone.geometryType+":"+zone.points;
-                if(observed.add(key)) log("ZONE_OBSERVED rank="+rank+" biome="+zone.getType()+" origin="+zone.getX()+","+zone.getY()+" geometry="+zone.geometryType+" nativeArea="+zone.getTotalArea()+" (capacity area not yet assigned)");
+            for(ZoneCatalog.Shape zone:nativeZones.at(x,y)) {
+                catalog.request(zone,StockService.Chunk.at(x,y));
+                if(observed.add(zone.key()))log("ZONE_OBSERVED rank="+rank+" biome="+zone.biome()+" residual="+zone.residual()+" geometry="+zone.geometry());
                 rank++;
             }
             lastTime=clock();
         } catch(Exception failure) {error("native zone observation",failure);}
+    }
+    public static void tick() {
+        if(GameClient.client||store==null)return;
+        try {
+            lastTime=clock();
+            if(catalog!=null)catalog.pump(lastTime,2048);
+            service.working(lastTime);
+        }catch(Exception failure){error("zone stock update",failure);}
     }
     public static KahluaTable requestLight(IsoPlayer player) {
         if(player==null||!beginWorld()) return null;
@@ -97,6 +107,7 @@ public final class RuntimeBridge {
         if(GameClient.client||store==null||chunk==null) return;
         try {
             StockService.Chunk key=new StockService.Chunk(chunk.wx,chunk.wy);
+            if(catalog!=null)catalog.unload(key);
             service.unload(key,clock());
             if(observedChunks.remove(key)) log("CHUNK_UNLOAD "+key.x()+","+key.y()+" (authoritative native callback)");
         } catch(Exception failure) {error("chunk unload",failure);}
@@ -110,7 +121,7 @@ public final class RuntimeBridge {
         try {
             service.shutdown(now);
             log("WORLD_CLOSED worldId="+store.worldId+" regular shutdown");
-            store=null;service=null;currentSave=null;observedChunks.clear();observed.clear();measured.clear();lights=new LightQueries();
+            store=null;service=null;catalog=null;nativeZones=null;currentSave=null;observedChunks.clear();observed.clear();measured.clear();lights=new LightQueries();
         } catch(Exception failure) {error("world shutdown",failure);}
     }
     public static WorldTime clock() {

@@ -24,6 +24,7 @@ public final class StockService {
     private final Map<String,ZoneStock> zones=new LinkedHashMap<>();
     private final Map<String,Find> finds=new LinkedHashMap<>();
     private final Map<Chunk,Set<String>> chunkZones=new HashMap<>();
+    private final Map<String,Double> workingHours=new HashMap<>();
     public StockService(JsonStockStore store) {this.store=store;}
     public void attach(ZoneStock zone) {
         if(zones.putIfAbsent(zone.id,zone)!=null) throw new IllegalStateException("duplicate active zone");
@@ -70,10 +71,21 @@ public final class StockService {
         for(Find find:new ArrayList<>(finds.values())) if(Chunk.at(find.x,find.y).equals(chunk)) {affected.add(find.zone);release(find);}
         for(String id:affected) store.save(zones.get(id));
         chunkZones.remove(chunk);
+        for(String id:affected) if(chunkZones.values().stream().noneMatch(ids->ids.contains(id))&&finds.values().stream().noneMatch(find->find.zone.equals(id))) {
+            zones.remove(id);workingHours.remove(id);store.removeWorking(id);
+        }
     }
+    /** Batched aggregate working snapshots; fixed files change only at normal unload/shutdown. */
+    public void working(WorldTime now) throws IOException {
+        expire(now);
+        for(ZoneStock zone:zones.values())if(now.hours()-workingHours.getOrDefault(zone.id,Double.NEGATIVE_INFINITY)>=1d/60) {
+            store.working(zone);workingHours.put(zone.id,now.hours());
+        }
+    }
+    public int activeZones(){return zones.size();}
     public void shutdown(WorldTime now) throws IOException {
         expire(now);for(Find find:new ArrayList<>(finds.values())) release(find);
-        for(ZoneStock zone:zones.values()) store.save(zone);
+        for(ZoneStock zone:zones.values()) {store.save(zone);store.removeWorking(zone.id);}
     }
     public int openFinds() {return finds.size();}
     public static Map<String,Double> focus(Map<String,Double> weights,String focus,double bonus,boolean available) {

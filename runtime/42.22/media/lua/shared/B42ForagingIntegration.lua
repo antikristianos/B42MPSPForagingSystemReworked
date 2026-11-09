@@ -16,9 +16,10 @@ end
 
 local function onTick()
     ticks = ticks + 1
-    if ticks % 120 ~= 0 then return end
     local api = bridge()
     if not api then return end
+    if not isClient() then api.tick() end
+    if ticks % 120 ~= 0 then return end
     if isServer() then api.beginWorld(); return end
     if not ISSearchManager then return end
     for index = 0, getNumActivePlayers() - 1 do
