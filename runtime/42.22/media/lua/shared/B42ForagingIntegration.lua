@@ -5,9 +5,22 @@ local ticks = 0
 local missingReported = false
 local lastSearch = {}
 local rulesInstalled = false
+local clientReady = false
+local LIGHT_PROTOCOL = 2
+local LIGHT_REACH_SQUARED = 36
+local lastLightPoll = nil
+
+local function sendLightRequest(player, request)
+    sendServerCommand(player, moduleName, "light", request)
+    print("[B42Foraging] LIGHT_SENT request=" .. request.requestId .. " attempt=" .. tostring(request.attempt))
+end
 
 local function bridge()
     if B42ForagingBridge then
+        if isClient() and not clientReady then
+            clientReady = true
+            print("[B42Foraging] LIGHT_CLIENT_READY protocol=" .. LIGHT_PROTOCOL)
+        end
         if not isClient() and B42ForagingRules and not rulesInstalled then
             B42ForagingBridge.setSearchRules(B42ForagingRules)
             rulesInstalled = true
@@ -26,12 +39,16 @@ local function onTick()
     local api = bridge()
     if not api then return end
     if not isClient() then api.tick() end
-    if isServer() and ticks % 10 == 0 then
-        local players = getOnlinePlayers()
-        for index = 0, players:size() - 1 do
-            local player = players:get(index)
-            local request = api.requestLight(player)
-            if request then sendServerCommand(player, moduleName, "light", request) end
+    if isServer() then
+        local now = getTimestampMs()
+        if not lastLightPoll or now < lastLightPoll or now - lastLightPoll >= 100 then
+            lastLightPoll = now
+            local players = getOnlinePlayers()
+            for index = 0, players:size() - 1 do
+                local player = players:get(index)
+                local request = api.requestLight(player)
+                if request then sendLightRequest(player, request) end
+            end
         end
     end
     if ticks % 10 ~= 0 then return end
@@ -71,7 +88,7 @@ local function onClientCommand(module, command, player, args)
             lastSearch[id] = now
             api.setSearchState(player, true, type(args.focus) == "string" and args.focus or "None")
             local request = api.requestLight(player)
-            if request then sendServerCommand(player, moduleName, "light", request) end
+            if request then sendLightRequest(player, request) end
         else
             lastSearch[player:getOnlineID()] = nil
             api.cancelSearch(player)
@@ -79,28 +96,53 @@ local function onClientCommand(module, command, player, args)
     elseif command == "light" then api.acceptLight(player, args) end
 end
 
+local function coordinate(value)
+    return type(value) == "number" and value == value and math.abs(value) <= 2147483647 and value == math.floor(value)
+end
+
+local function token(value)
+    return type(value) == "string" and #value > 0 and #value <= 64 and not value:find("%c")
+end
+
+local function inReach(x, y, z, targetX, targetY, targetZ)
+    local dx, dy = x - targetX, y - targetY
+    return z == targetZ and dx * dx + dy * dy <= LIGHT_REACH_SQUARED
+end
+
+local function lightReply(player, request, status, value)
+    sendClientCommand(player, moduleName, "light", { requestId = request.requestId, session = request.session, status = status, light = value })
+    print("[B42Foraging] LIGHT_CLIENT_REPLY request=" .. request.requestId .. " status=" .. status)
+end
+
 local function onServerCommand(module, command, args)
     if module ~= moduleName or command ~= "light" or not isClient() or type(args) ~= "table" then return end
-    if type(args.x) ~= "number" or type(args.y) ~= "number" or type(args.z) ~= "number" then return end
-    local targetX, targetY, targetZ = args.targetX or args.x, args.targetY or args.y, args.targetZ or args.z
-    if type(targetX) ~= "number" or type(targetY) ~= "number" or type(targetZ) ~= "number" then return end
-    if targetX ~= targetX or targetY ~= targetY or targetZ ~= targetZ then return end
-    if targetX ~= math.floor(targetX) or targetY ~= math.floor(targetY) or targetZ ~= math.floor(targetZ) then return end
-    if math.abs(targetX - args.x) > 4 or math.abs(targetY - args.y) > 4 or targetZ ~= args.z then return end
+    if not token(args.requestId) or not token(args.session) or not coordinate(args.onlineId) then return end
+    print("[B42Foraging] LIGHT_RECEIVED request=" .. args.requestId)
     for index = 0, getNumActivePlayers() - 1 do
         local player = getSpecificPlayer(index)
         if player and player:getOnlineID() == args.onlineId then
+            if args.protocol ~= LIGHT_PROTOCOL then lightReply(player, args, "unsupported_protocol"); return end
+            local targetX, targetY, targetZ = args.targetX, args.targetY, args.targetZ
+            if not coordinate(args.x) or not coordinate(args.y) or not coordinate(args.z)
+                or not coordinate(targetX) or not coordinate(targetY) or not coordinate(targetZ)
+                or not inReach(args.x, args.y, args.z, targetX, targetY, targetZ) then
+                lightReply(player, args, "malformed_request"); return
+            end
             local manager = ISSearchManager and ISSearchManager.getManager(player)
-            if not manager or not manager.isSearchMode then return end
-            if math.floor(player:getX()) ~= args.x or math.floor(player:getY()) ~= args.y or math.floor(player:getZ()) ~= args.z then return end
-            local square = player:getCell():getGridSquare(targetX, targetY, targetZ)
-            if not square then return end
+            if not manager or not manager.isSearchMode then lightReply(player, args, "search_ended"); return end
+            local x, y, z = math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())
+            if z ~= targetZ then lightReply(player, args, "wrong_floor"); return end
+            if not inReach(x, y, z, targetX, targetY, targetZ) then lightReply(player, args, "out_of_range"); return end
+            local cell = player:getCell()
+            local square = cell and cell:getGridSquare(targetX, targetY, targetZ)
+            if not square then lightReply(player, args, "missing_square"); return end
             local value = square:getLightLevel(index)
-            if type(value) ~= "number" or value ~= value or value < 0 or value > 1 then return end
-            sendClientCommand(player, moduleName, "light", { requestId = args.requestId, session = args.session, light = value })
+            if type(value) ~= "number" or value ~= value or value < 0 or value > 1 then lightReply(player, args, "invalid_light"); return end
+            lightReply(player, args, "ok", value)
             return
         end
     end
+    print("[B42Foraging] LIGHT_CLIENT_REJECT request=" .. args.requestId .. " reason=player_unavailable")
 end
 
 local function beginWorld()

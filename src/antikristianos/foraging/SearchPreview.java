@@ -19,7 +19,7 @@ public final class SearchPreview {
         Entry(IsoPlayer player,long now){this.player=player;cadence=new SearchCadence(player.getX(),player.getY(),level(player),now,bound->ThreadLocalRandom.current().nextInt(bound));}
     }
     private static final class Probe {
-        final int x,y,z;final List<ZoneCatalog.Shape> zones;LightQueries.Request light;boolean sent;
+        final int x,y,z;final List<ZoneCatalog.Shape> zones;LightQueries.Request light;
         Probe(IsoGridSquare square,List<ZoneCatalog.Shape> zones){x=square.getX();y=square.getY();z=square.getZ();this.zones=zones;}
     }
     private final Map<Integer,Entry> entries=new LinkedHashMap<>();
@@ -30,11 +30,13 @@ public final class SearchPreview {
     private static int level(IsoPlayer player){return player.getPerkLevel(PerkFactory.Perks.PlantScavenging);}
     public void control(IsoPlayer player,boolean enabled,String focus,long now){
         if(GameClient.client||player==null)return;int id=id(player);
-        if(!enabled){entries.remove(id);lights.cancel(id);return;}
+        if(!enabled){cancel(id,"search_ended");return;}
         if(!entries.containsKey(id)&&entries.size()>=128)return;
         Entry entry=entries.get(id);if(entry==null||entry.player!=player){lights.cancel(id);entry=new Entry(player,now);entries.put(id,entry);}
         entry.heartbeat=now;entry.focus=focus!=null&&focus.length()<=64&&focus.chars().noneMatch(Character::isISOControl)?focus:"None";
     }
+    private void cancel(int id,String reason){var entry=entries.remove(id);if(entry!=null&&entry.probe!=null&&entry.probe.light!=null)System.out.println("[B42Foraging] LIGHT_CANCEL player="+id+" request="+entry.probe.light.id()+" reason="+reason);lights.cancel(id);}
+    private static boolean nearby(IsoPlayer player,Probe probe){return LightQueries.inRange((int)Math.floor(player.getX()),(int)Math.floor(player.getY()),(int)Math.floor(player.getZ()),probe.x,probe.y,probe.z);}
     private Object call(String name,Object... arguments){
         Object function=rules.rawget(name);if(function==null)throw new IllegalStateException("missing search rule "+name);
         var value=LuaManager.caller.protectedCall(LuaManager.thread,function,arguments);
@@ -54,23 +56,24 @@ public final class SearchPreview {
         var ids=new ArrayList<>(entries.keySet());
         for(int i=0;i<Math.min(8,ids.size());i++){
             int id=ids.get(Math.floorMod(cursor++,ids.size()));Entry entry=entries.get(id);if(entry==null||now<entry.nextCheck)continue;entry.nextCheck=now+250;
-            if(!active(entry,now)){entries.remove(id);lights.cancel(id);continue;}
+            if(!active(entry,now)){cancel(id,"inactive");continue;}
             if(entry.cadence.waiting()){
-                if(now>=entry.deadline){finish(entry,entry.probe!=null&&entry.probe.light!=null?"light_timeout":"zone_timeout",null,null,null,0,now,false);continue;}
+                if(entry.probe!=null&&!nearby(entry.player,entry.probe)){finish(entry,"position_changed",null,null,null,Double.NaN,now,false);continue;}
+                if(now>=entry.deadline||(entry.probe!=null&&entry.probe.light!=null&&now>=entry.probe.light.deadline())){finish(entry,entry.probe!=null&&entry.probe.light!=null?"light_timeout":"zone_timeout",null,null,null,Double.NaN,now,false);continue;}
                 if(entry.probe!=null&&entry.probe.light==null)prepareLight(entry,now);
                 continue;
             }
             entry.trial=entry.cadence.opportunity(entry.player.getX(),entry.player.getY(),now);if(entry.trial==0)continue;
             entry.trialFocus=entry.focus;
             entry.deadline=now+15_000;
-            if(GameServer.server&&ServerLOS.instance==null){finish(entry,"server_los_unavailable",null,null,null,0,now,false);continue;}
+            if(GameServer.server&&ServerLOS.instance==null){finish(entry,"server_los_unavailable",null,null,null,Double.NaN,now,false);continue;}
             var player=entry.player;int x=(int)Math.floor(player.getX()),y=(int)Math.floor(player.getY()),z=(int)Math.floor(player.getZ());
-            var home=nativeZones.at(x,y);if(home.isEmpty()){finish(entry,"no_zone",null,null,null,0,now,false);continue;}
+            var home=nativeZones.at(x,y);if(home.isEmpty()){finish(entry,"no_zone",null,null,null,Double.NaN,now,false);continue;}
             double radius=Math.min(3,Math.max(0,finite(call("radius",player))));int r=(int)Math.floor(radius);var candidates=new ArrayList<IsoGridSquare>();
             for(int dx=-r;dx<=r;dx++)for(int dy=-r;dy<=r;dy++)if(home.get(0).contains().test(x+dx,y+dy)){
                 var square=IsoWorld.instance.currentCell.getGridSquare(x+dx,y+dy,z);if(visible(player,square))candidates.add(square);
             }
-            if(candidates.size()<2){finish(entry,"no_visible_position",null,null,null,0,now,false);continue;}
+            if(candidates.size()<2){finish(entry,"no_visible_position",null,null,null,Double.NaN,now,false);continue;}
             var square=candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));var zones=nativeZones.at(square.getX(),square.getY());
             entry.probe=new Probe(square,zones);
             for(var shape:zones)catalog.request(shape,StockService.Chunk.at(square.getX(),square.getY()));
@@ -80,24 +83,27 @@ public final class SearchPreview {
     private void prepareLight(Entry entry,long now){
         Probe probe=entry.probe;if(probe.zones.stream().anyMatch(shape->!catalog.ready(shape)))return;
         var square=IsoWorld.instance.currentCell.getGridSquare(probe.x,probe.y,probe.z);
-        if(!visible(entry.player,square)||Math.hypot(entry.player.getX()-probe.x,entry.player.getY()-probe.y)>6){finish(entry,"position_changed",null,null,null,0,now,false);return;}
+        if(!visible(entry.player,square)||!nearby(entry.player,probe)){finish(entry,"position_changed",null,null,null,Double.NaN,now,false);return;}
         if(GameServer.server){
-            var p=entry.player;probe.light=lights.request(id(p),(int)Math.floor(p.getX()),(int)Math.floor(p.getY()),(int)Math.floor(p.getZ()),now);
+            var p=entry.player;probe.light=lights.requestTarget(id(p),(int)Math.floor(p.getX()),(int)Math.floor(p.getY()),(int)Math.floor(p.getZ()),probe.x,probe.y,probe.z,now);
+            if(probe.light==null)throw new IllegalStateException("light context already pending");
         }else evaluate(entry,square.getLightLevel(entry.player.getPlayerNum()),now);
     }
     public KahluaTable request(IsoPlayer player){
-        Entry entry=entries.get(id(player));if(entry==null||entry.probe==null||entry.probe.light==null||entry.probe.sent)return null;
-        Probe probe=entry.probe;probe.sent=true;var request=probe.light;KahluaTable data=LuaManager.platform.newTable();
-        data.rawset("requestId",request.id());data.rawset("session",request.session());data.rawset("onlineId",(double)player.getOnlineID());
-        data.rawset("x",(double)request.x());data.rawset("y",(double)request.y());data.rawset("z",(double)request.z());
-        data.rawset("targetX",(double)probe.x);data.rawset("targetY",(double)probe.y);data.rawset("targetZ",(double)probe.z);
-        return data;
+        Entry entry=entries.get(id(player));if(entry==null||entry.probe==null||entry.probe.light==null)return null;
+        long now=System.nanoTime()/1_000_000;
+        if(!active(entry,now)){cancel(id(player),"inactive");return null;}
+        if(now>=entry.deadline||!nearby(player,entry.probe))return null;
+        var request=lights.nextSend(id(player),now);if(request==null)return null;
+        int attempt=lights.sendCount(id(player));
+        System.out.println("[B42Foraging] LIGHT_REQUEST player="+id(player)+" request="+request.id()+" attempt="+attempt+" trial="+entry.trial+" at="+request.targetX()+","+request.targetY()+","+request.targetZ());
+        return RuntimeBridge.lightData(request,attempt);
     }
     public boolean accepted(IsoPlayer player,String requestId,double light,long now){Entry entry=entries.get(id(player));if(entry==null||now>=entry.deadline||entry.probe==null||entry.probe.light==null||!entry.probe.light.id().equals(requestId)||!active(entry,now))return false;evaluate(entry,light,now);return true;}
     private void evaluate(Entry entry,double light,long now){
         if(!Double.isFinite(light)||light<0||light>1)return;
         Probe probe=entry.probe;var square=IsoWorld.instance.currentCell.getGridSquare(probe.x,probe.y,probe.z);
-        if(!visible(entry.player,square)){finish(entry,"sight_changed",null,null,null,light,now,false);return;}
+        if(!nearby(entry.player,probe)||!visible(entry.player,square)){finish(entry,"sight_changed",null,null,null,light,now,false);return;}
         var current=nativeZones.at(probe.x,probe.y);
         if(!current.stream().map(ZoneCatalog.Shape::key).toList().equals(probe.zones.stream().map(ZoneCatalog.Shape::key).toList())){finish(entry,"zone_changed",null,null,null,light,now,false);return;}
         for(var shape:current)catalog.request(shape,StockService.Chunk.at(probe.x,probe.y));
@@ -117,7 +123,7 @@ public final class SearchPreview {
     }
     private void finish(Entry entry,String reason,String zoneId,String biome,SearchSelection.Result result,double light,long now,boolean matched){
         int x=entry.probe==null?(int)Math.floor(entry.player.getX()):entry.probe.x,y=entry.probe==null?(int)Math.floor(entry.player.getY()):entry.probe.y;
-        System.out.println("[B42Foraging] SEARCH_PROBE trial="+entry.trial+" player="+id(entry.player)+" result="+reason+" focus="+entry.trialFocus+" focusChance="+(result==null?0:result.focusChance())+" category="+(result==null?null:result.category())+" item="+(result==null?null:result.item())+" biome="+biome+" zone="+zoneId+" from="+entry.player.getX()+","+entry.player.getY()+" at="+x+","+y+" facing="+entry.player.getLookAngleRadians()+" light="+light+" visibility="+(GameServer.server?"server_geometric_LOS":"local_canSee")+" (preview; stock and XP unchanged)");
+        System.out.println("[B42Foraging] SEARCH_PROBE trial="+entry.trial+" player="+id(entry.player)+" result="+reason+" focus="+entry.trialFocus+" focusChance="+(result==null?0:result.focusChance())+" category="+(result==null?null:result.category())+" item="+(result==null?null:result.item())+" biome="+biome+" zone="+zoneId+" from="+entry.player.getX()+","+entry.player.getY()+" at="+x+","+y+" facing="+entry.player.getLookAngleRadians()+" light="+(Double.isFinite(light)?Double.toString(light):"unavailable")+" request="+(entry.probe==null||entry.probe.light==null?"none":entry.probe.light.id())+" sends="+lights.sendCount(id(entry.player))+" visibility="+(GameServer.server?"server_geometric_LOS":"local_canSee")+" (preview; stock and XP unchanged)");
         entry.cadence.finish(matched,x,y,level(entry.player),now);entry.probe=null;lights.cancel(id(entry.player));
     }
 }

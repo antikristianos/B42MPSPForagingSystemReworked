@@ -28,6 +28,7 @@ public final class RuntimeBridge {
     private static LightQueries lights=new LightQueries();
     private static final Set<StockService.Chunk> observedChunks=new HashSet<>();
     private static final Set<Integer> measured=new HashSet<>();
+    private static final Map<Integer,Long> lightRejectLogs=new LinkedHashMap<>();
     private static final Set<String> observed=new HashSet<>();
     private static boolean failureLogged;
     public static long chunkHookCalls,shutdownHookCalls;
@@ -43,7 +44,7 @@ public final class RuntimeBridge {
             if(!gameVersion.equals("42.22")&&!gameVersion.startsWith("42.22.")) throw new IllegalStateException("unsupported game build "+gameVersion);
             WorldTime now=clock();
             store=new JsonStockStore(save,now);service=new StockService(store);currentSave=save;lastTime=now;
-            lights=new LightQueries();observedChunks.clear();observed.clear();measured.clear();failureLogged=false;nativeZones=null;catalog=null;search=null;
+            lights=new LightQueries();lightRejectLogs.clear();observedChunks.clear();observed.clear();measured.clear();failureLogged=false;nativeZones=null;catalog=null;search=null;
             log("WORLD_READY version="+Main.VERSION+" worldId="+store.worldId+" anchor="+store.anchor.hours()+" namespace="+JsonStockStore.NAMESPACE);
             return true;
         } catch(Exception failure) {error("world initialization",failure);return false;}
@@ -89,21 +90,43 @@ public final class RuntimeBridge {
         if(player==null||!beginWorld()) return null;
         if(searchRules!=null)return search==null?null:search.request(player);
         int x=(int)Math.floor(player.getX()),y=(int)Math.floor(player.getY()),z=(int)Math.floor(player.getZ());
-        LightQueries.Request request=lights.request(player.getOnlineID(),x,y,z,System.nanoTime()/1_000_000);
+        long now=System.nanoTime()/1_000_000;
+        if(lights.peek(player.getOnlineID())==null||now>=lights.peek(player.getOnlineID()).deadline())lights.request(player.getOnlineID(),x,y,z,now);
+        LightQueries.Request request=lights.nextSend(player.getOnlineID(),now);
         if(request==null) return null;
+        return lightData(request,lights.sendCount(player.getOnlineID()));
+    }
+    static KahluaTable lightData(LightQueries.Request request,int attempt){
         KahluaTable data=LuaManager.platform.newTable();
         data.rawset("requestId",request.id());data.rawset("session",request.session());data.rawset("onlineId",(double)request.player());
-        data.rawset("x",(double)x);data.rawset("y",(double)y);data.rawset("z",(double)z);
+        data.rawset("protocol",(double)LightQueries.PROTOCOL);data.rawset("attempt",(double)attempt);
+        data.rawset("x",(double)request.x());data.rawset("y",(double)request.y());data.rawset("z",(double)request.z());
+        data.rawset("targetX",(double)request.targetX());data.rawset("targetY",(double)request.targetY());data.rawset("targetZ",(double)request.targetZ());
         return data;
+    }
+    private static void lightRejected(int player,String reason){
+        long now=System.nanoTime()/1_000_000;Long previous=lightRejectLogs.get(player);if(previous!=null&&now-previous<2000)return;
+        if(lightRejectLogs.size()>=128&&!lightRejectLogs.containsKey(player))lightRejectLogs.remove(lightRejectLogs.keySet().iterator().next());
+        lightRejectLogs.put(player,now);var request=lights.peek(player);
+        log("LIGHT_REPLY player="+player+" request="+(request==null?"none":request.id())+" status="+reason);
     }
     public static boolean acceptLight(IsoPlayer player,KahluaTable data) {
         if(GameClient.client||store==null||player==null||data==null) return false;
+        int onlineId=player.getOnlineID();
         Object value=data.rawget("light"),id=data.rawget("requestId"),session=data.rawget("session");
-        if(!(value instanceof Number number)||!(id instanceof String)||!(session instanceof String)) return false;
+        if(!(id instanceof String requestId)||!(session instanceof String responseSession)){lightRejected(onlineId,"malformed_reply");return false;}
+        Object status=data.rawget("status");
+        if(status instanceof String code&&!code.equals("ok")){
+            String reason=Set.of("search_ended","out_of_range","wrong_floor","missing_square","invalid_light","malformed_request","unsupported_protocol").contains(code)?"client_"+code:"invalid_status";
+            lightRejected(onlineId,lights.matches(onlineId,requestId,responseSession)?reason:"unbound_status");return false;
+        }
+        if(!(value instanceof Number number)){lightRejected(onlineId,"malformed_reply");return false;}
         int x=(int)Math.floor(player.getX()),y=(int)Math.floor(player.getY()),z=(int)Math.floor(player.getZ());
-        if(!lights.accept(player.getOnlineID(),(String)id,(String)session,x,y,z,number.doubleValue(),System.nanoTime()/1_000_000)) return false;
-        if(search!=null)try{if(!search.accepted(player,(String)id,number.doubleValue(),System.nanoTime()/1_000_000))return false;}catch(Exception failure){search=null;lights=new LightQueries();error("search light result",failure);return false;}
-        if(measured.add((int)player.getOnlineID())) log("LIGHT_ACCEPTED onlineId="+player.getOnlineID()+" value="+number.doubleValue()+" at="+x+","+y+","+z+" (measurement only)");
+        var request=lights.peek(onlineId);
+        String reason=lights.acceptReason(onlineId,requestId,responseSession,x,y,z,number.doubleValue(),System.nanoTime()/1_000_000);
+        if(!reason.equals("accepted")){lightRejected(onlineId,reason);return false;}
+        if(search!=null)try{if(!search.accepted(player,requestId,number.doubleValue(),System.nanoTime()/1_000_000)){lightRejected(onlineId,"search_context_changed");return false;}}catch(Exception failure){search=null;lights=new LightQueries();error("search light result",failure);return false;}
+        log("LIGHT_ACCEPTED onlineId="+onlineId+" request="+requestId+" value="+number.doubleValue()+" at="+request.targetX()+","+request.targetY()+","+request.targetZ()+" from="+x+","+y+","+z+" (measurement only)");
         return true;
     }
     public static void observeLocalLight(IsoPlayer player) {
@@ -133,7 +156,7 @@ public final class RuntimeBridge {
         try {
             service.shutdown(now);
             log("WORLD_CLOSED worldId="+store.worldId+" regular shutdown");
-            store=null;service=null;catalog=null;nativeZones=null;search=null;currentSave=null;observedChunks.clear();observed.clear();measured.clear();lights=new LightQueries();
+            store=null;service=null;catalog=null;nativeZones=null;search=null;currentSave=null;observedChunks.clear();observed.clear();measured.clear();lightRejectLogs.clear();lights=new LightQueries();
         } catch(Exception failure) {error("world shutdown",failure);}
     }
     public static WorldTime clock() {
