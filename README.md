@@ -2,7 +2,7 @@
 
 Maintained by Antikristianos. Developed with ChatGPT / Codex assistance.
 
-Source for package `B42MPSPForagingSystemReworked_WIP`, game slice `42.22`, mod version `0.2`. Java 17 bytecode; use JDK 25 to read the game's dependencies.
+Source for package `B42MPSPForagingSystemReworked_WIP`, game slice `42.22`, mod version `0.2.1`. Java 17 bytecode; use JDK 25 to read the game's dependencies.
 
 This repository contains the Java files used by this artifact, its embedded data, and the associated runtime scripts. It excludes internal planning, reports, credentials, compiled mods and third-party dependencies.
 

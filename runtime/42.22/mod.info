@@ -1,13 +1,13 @@
 name=[B42] MP/SP Foraging System Reworked (WIP)
 id=B42MPSPForagingSystemReworked_WIP
 author=Antikristianos
-description=Native-zone stock candidate with exclusive land capacity, biome gap coverage and independent category snapshots. Regular Vanilla finds remain active while zone integration is tested.
+description=Authoritative search and focus preview using native zones and targeted client light measurements. Preview results are logged without stock or XP booking; regular Vanilla finds remain active.
 icon=../common/icon.png
 require=\ZombieBuddy
 javaJarFile=media/java/B42MPSPForagingSystemReworked.jar
 javaPkgName=antikristianos.foraging
 ZBVersionMin=2.3.2
-modversion=0.2
+modversion=0.2.1
 versionMin=42.22.0
 category=Gameplay
 incompatible=B42MPSPForagingSystemReworked

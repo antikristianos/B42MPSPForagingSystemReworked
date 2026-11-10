@@ -1,10 +1,10 @@
 package antikristianos.foraging;
 
 public final class Main {
-    public static final String VERSION="0.2";
+    public static final String VERSION="0.2.1";
     private Main() {}
     public static void main(String[] args) {
         me.zed_0xff.zombie_buddy.Exposer.exposeClass(RuntimeBridge.class);
-        System.out.println("[B42Foraging] Java "+VERSION+" loaded; native-zone stock candidate; regular Vanilla findings retained until zone adapter acceptance");
+        System.out.println("[B42Foraging] Java "+VERSION+" loaded; authoritative search preview; regular Vanilla finds retained; no preview stock or XP booking");
     }
 }

@@ -20,8 +20,8 @@
     },
     {
       "Path": "antikristianos/foraging/Main.class",
-      "Size": 758,
-      "Sha256": "DBE344A4B264972918C5BCB77201A99C72179E77D01A87BC0894B59B05ECB40A"
+      "Size": 762,
+      "Sha256": "BC65915464BCC31F0E531D174FE381EDFBD20C5D38EF055A885FB1C4A64A9A1C"
     },
     {
       "Path": "antikristianos/foraging/NativeZones$1.class",
@@ -56,12 +56,52 @@
     {
       "Path": "antikristianos/foraging/RuntimeBridge$1.class",
       "Size": 2676,
-      "Sha256": "094B5F0A32887247356F2C324BB9219BD02F398D43987F9852A5B393527F379E"
+      "Sha256": "15D5CF50CF276985C38A6BC135B4860BC646C92FC8E2E0F2EA60A798D5EADA9B"
     },
     {
       "Path": "antikristianos/foraging/RuntimeBridge.class",
-      "Size": 10617,
-      "Sha256": "742B11D60762260E9AC60BABD04E9A34CD363A7C1068777ABACA8404A31CCA15"
+      "Size": 11993,
+      "Sha256": "10749FF9CEB4BB3D7A7A070440ABB26F31B80D2BA27950F0FDD12559E395196F"
+    },
+    {
+      "Path": "antikristianos/foraging/SearchCadence.class",
+      "Size": 1402,
+      "Sha256": "A4BCA5D70DE8D70969CF15123DCE32126E535A2094AE8072C0ED23EC18458C35"
+    },
+    {
+      "Path": "antikristianos/foraging/SearchPreview$1.class",
+      "Size": 1761,
+      "Sha256": "F285DB97ADCADDF71DF7557E16E3CF415CC7A0D88816C332A31D69940C3D7D58"
+    },
+    {
+      "Path": "antikristianos/foraging/SearchPreview$Entry.class",
+      "Size": 1761,
+      "Sha256": "73E4BA89EFF1B0A289AB67585347576DE86825B5E810B0BB35CC3173E47CE806"
+    },
+    {
+      "Path": "antikristianos/foraging/SearchPreview$Probe.class",
+      "Size": 1093,
+      "Sha256": "7DA28A5CB8DCB42F066A2A9916798FA6E49B60D628DC96F87484EEB129989B0F"
+    },
+    {
+      "Path": "antikristianos/foraging/SearchPreview.class",
+      "Size": 15256,
+      "Sha256": "A015EEA13D9DF6ED329E18E2900038ADC351D8CE52B3301DDB5109AE9451E9E7"
+    },
+    {
+      "Path": "antikristianos/foraging/SearchSelection$Result.class",
+      "Size": 1703,
+      "Sha256": "F04027610C10467ADB716FD4E6732853C4799C04EE522488E1B56D0440F95B9B"
+    },
+    {
+      "Path": "antikristianos/foraging/SearchSelection$Rules.class",
+      "Size": 358,
+      "Sha256": "574C3590E7C98EF36935B6638938C1F7A5CACA0A852C315B2DFA65C53E8E650A"
+    },
+    {
+      "Path": "antikristianos/foraging/SearchSelection.class",
+      "Size": 3264,
+      "Sha256": "E01A382F5D8D239DD3072EB1D5C16ED7782B65F6F9E76FEAD16C59833CAC56AD"
     },
     {
       "Path": "antikristianos/foraging/StockService$Chunk.class",
