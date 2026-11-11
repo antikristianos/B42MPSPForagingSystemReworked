@@ -6,7 +6,7 @@ import java.util.UUID;
 
 /** One fixed server-selected target per pending measurement; bounded retries never create a new trial. */
 public final class LightQueries {
-    public static final int PROTOCOL=2,MAX_REACH=6,MAX_SENDS=3;
+    public static final int PROTOCOL=3,MAX_REACH=6,MAX_SENDS=3;
     public static final long LIFETIME_MS=10_000,RETRY_MS=750;
     public record Request(String id,String session,int player,int x,int y,int z,int targetX,int targetY,int targetZ,long deadline) {}
     private static final class Pending {

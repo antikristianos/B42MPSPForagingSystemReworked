@@ -3,16 +3,16 @@
   "Project": "B42MPSPForagingSystemReworked",
   "Repository": "antikristianos/B42MPSPForagingSystemReworked",
   "Branch": "wip",
-  "Tag": "wip-1.94",
-  "ModVersion": "0.2.3",
-  "CollectionVersion": "1.94",
+  "Tag": "wip-1.95",
+  "ModVersion": "0.2.4",
+  "CollectionVersion": "1.95",
   "WorkshopId": 3802764936,
   "WorkshopUrl": "https://steamcommunity.com/sharedfiles/filedetails/?id=3802764936",
-  "UploadManifestSha256": "88B60FC7A63A7DD11EAE2D421F51E95838905C1E600C6A67517E726986C21B7C",
+  "UploadManifestSha256": "CEB5144239B09C1DA0A2C8C6D49A4ED2FCCFE88B421D3150388BA91A73D5D5C5",
   "Artifact": {
     "Path": "mods/B42MPSPForagingSystemReworked_WIP/42.22/media/java/B42MPSPForagingSystemReworked.jar",
-    "Size": 74367,
-    "Sha256": "DEB36DA5E62760E4B6B2CE656C4D14BF10D574FA5A7099737DD2F58BE47D7D28"
+    "Size": 93175,
+    "Sha256": "43EFE4E63BBEE53BBD7AD46EDBA2CC5196D3286B22A6DE4F8AD0098A7C371255"
   },
   "AdditionalArtifacts": [],
   "Sources": [
@@ -24,17 +24,17 @@
     {
       "Path": "MANIFEST.MF",
       "Size": 167,
-      "Sha256": "408CD3F240542A187771D3AF1E14BB06EAB7BED170A9A46976258D047AD50071"
+      "Sha256": "8D44F6E8298838F2010DE481EE332342250F495BD7139C0F1768F5C63A8204C9"
     },
     {
       "Path": "README.md",
       "Size": 1479,
-      "Sha256": "B8566713DAB659339A00ECA801885E1F3FF0D5022E011D5C05DB74A91BF5A743"
+      "Sha256": "2046492BD09C8280DB542251D3C201D59CBDE213D4D8FB05C2E1953291955556"
     },
     {
       "Path": "build.json",
-      "Size": 7483,
-      "Sha256": "75B7AF792E9DA46BD5045ABD9262FDF21FF738CC600BF3BB89B8BF0E3629C855"
+      "Size": 8958,
+      "Sha256": "6BD62DF981E28BC68ED58FE938298D0D2E8756706A24BCBA884C919A7E0A4D0F"
     },
     {
       "Path": "build.ps1",
@@ -42,19 +42,49 @@
       "Sha256": "8389B7B0B5515387FA5D9B3989FED7C8629DA7762817C03AD266B69DE5B2B0FD"
     },
     {
+      "Path": "runtime/42.22/media/lua/client/B42ForagingClient.lua",
+      "Size": 9644,
+      "Sha256": "38E749958A6CD46995DBBD1E98AF6537CCF787E21D4341A54A75382D2254080A"
+    },
+    {
+      "Path": "runtime/42.22/media/lua/server/B42ForagingVanillaServer.lua",
+      "Size": 484,
+      "Sha256": "997A01E8C533372798CE8EB297B25D8B100412CCE7A95AEFF3CEE0371ED0AC31"
+    },
+    {
       "Path": "runtime/42.22/media/lua/shared/B42ForagingIntegration.lua",
-      "Size": 7476,
-      "Sha256": "39C55E04C2A5DE0E3D1165E7F5C4657BE2D820B824A23C012CD59F7BF6C9FEB8"
+      "Size": 9234,
+      "Sha256": "4E96DDB66BC7A08637E149D0D130242D40B3ED168CDDC641B4B0E9E429B69812"
+    },
+    {
+      "Path": "runtime/42.22/media/lua/shared/B42ForagingPickup.lua",
+      "Size": 2804,
+      "Sha256": "B53EF831F5F11B2F1DB3AA2048025471BDF0FC81F860823E452FAD91E2E71482"
     },
     {
       "Path": "runtime/42.22/media/lua/shared/B42ForagingRules.lua",
-      "Size": 7591,
-      "Sha256": "BCAD3AA35796D385C89F6704E13ED137CFCE74BAEB75387D8C14AC377F9DF974"
+      "Size": 10116,
+      "Sha256": "E06F70EB032C7C50B3CEA8AD7E9CCD38AA79A91D7F906DBEFC727549148AC330"
     },
     {
       "Path": "runtime/42.22/mod.info",
-      "Size": 564,
-      "Sha256": "9F8288846C3BDE364AA16D02C566E09F7D60D8D061867F18D0CE7143A59C5964"
+      "Size": 596,
+      "Sha256": "616A4F2083BF2EEE18369DBA5C4125C4372CBDD0690DEA6520C8373B59AEBFD2"
+    },
+    {
+      "Path": "src/antikristianos/foraging/FindRuntime.java",
+      "Size": 13754,
+      "Sha256": "4CD403CADCC9937C8DACF6A381AFAB26D10AF4CC5E855DAD783B30036CF7EBFF"
+    },
+    {
+      "Path": "src/antikristianos/foraging/ForageDefinitions.java",
+      "Size": 3503,
+      "Sha256": "B3D9308C2EB350D1ACAFBE7496979D358D3B7B59168B09E5045354D890A8521F"
+    },
+    {
+      "Path": "src/antikristianos/foraging/ItemBatch.java",
+      "Size": 1312,
+      "Sha256": "9540CB9AAD39CB3D03297694D48662DF656B9F26EA490A6B0CF3325D40DDF475"
     },
     {
       "Path": "src/antikristianos/foraging/JsonStockStore.java",
@@ -69,17 +99,17 @@
     {
       "Path": "src/antikristianos/foraging/LightQueries.java",
       "Size": 3324,
-      "Sha256": "752CB5A2C81CF81B1C1489740C0EED66BD7732151BFBCE47730455283F329475"
+      "Sha256": "5383185CB487FB2D2C93BA5D738661A7083EC63A63AD68F738857D43A27F4A34"
     },
     {
       "Path": "src/antikristianos/foraging/Main.java",
-      "Size": 421,
-      "Sha256": "279CF26363D80CA12021B6A71E1C1F5F3BAE236C4CFD34F776EE10658695058E"
+      "Size": 455,
+      "Sha256": "8F43330E0116F9AD230611009B85A93E33D03BA7FCA879FD86F49C20F9672547"
     },
     {
       "Path": "src/antikristianos/foraging/NativeZones.java",
-      "Size": 11815,
-      "Sha256": "85B8C94493AB67CD971600F1A168A554A7D51324DE1FAEC41DEFD037B46DDF4F"
+      "Size": 11999,
+      "Sha256": "7077D7580A917020989DD22D5F0CFCC26C901CC46DE667FC4EBFCDCDA3CD3103"
     },
     {
       "Path": "src/antikristianos/foraging/PatchChunkUnload.java",
@@ -103,18 +133,18 @@
     },
     {
       "Path": "src/antikristianos/foraging/RuntimeBridge.java",
-      "Size": 12109,
-      "Sha256": "2DE87940EB81E1C898CF3748AA4F733DB2C1400FAB69A3C81693B5CB94569321"
+      "Size": 14149,
+      "Sha256": "C52F4D23C4018C807DCAD8077A928DDBC037C4328822912B639483E080A5BFCE"
     },
     {
       "Path": "src/antikristianos/foraging/SearchCadence.java",
-      "Size": 1306,
-      "Sha256": "C5660CA82D592D63CCA0C45773BF69D74B61256A55A811DA857E5E15CAD4F590"
+      "Size": 1391,
+      "Sha256": "2C07C09C41E1221CFBDC6AA2646604E6C95CF81B476E5D0649F28D4451DDCC2D"
     },
     {
       "Path": "src/antikristianos/foraging/SearchPreview.java",
-      "Size": 13744,
-      "Sha256": "9D75EC832E6F29385589B24B845AAB011C1ACD9FE6E3B6584094197E56C8DDA8"
+      "Size": 14633,
+      "Sha256": "B35A96868F9147380BA06924A917B08A3403ECE9615B618FE4609350CE8F97FF"
     },
     {
       "Path": "src/antikristianos/foraging/SearchSelection.java",
@@ -122,9 +152,14 @@
       "Sha256": "A4E59160A2FBCB0A59EFDC11B5E54BC4905B79F00D1384EB08EC0ED2DF29CD73"
     },
     {
+      "Path": "src/antikristianos/foraging/SightSample.java",
+      "Size": 2568,
+      "Sha256": "356E8ABDC8AD3A74F69D721B402B8FF7F85690A7A5CFC6482C5F46DD36D130B3"
+    },
+    {
       "Path": "src/antikristianos/foraging/StockService.java",
-      "Size": 6709,
-      "Sha256": "2289920A64EC33968A9E2D6C80B192ADEB957A4E76581EB419F2E3802D37A56B"
+      "Size": 6828,
+      "Sha256": "770794B2CC181DB4F0D43679CB95839EAD32651C7DF1D3F86E8D240F3D40A20A"
     },
     {
       "Path": "src/antikristianos/foraging/WorldTime.java",

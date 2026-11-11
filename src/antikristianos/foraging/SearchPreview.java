@@ -12,7 +12,7 @@ import zombie.network.GameClient;
 import zombie.network.GameServer;
 import zombie.network.ServerLOS;
 
-/** Productive native search inputs, deliberately no reveal/reservation/XP before world validation. */
+/** Native on-demand force-find opportunities. A missing sink keeps isolated selection tests read-only. */
 public final class SearchPreview {
     private static final class Entry {
         final IsoPlayer player;final SearchCadence cadence;String focus="None",trialFocus="None";long heartbeat,nextCheck,trial,deadline;Probe probe;
@@ -24,8 +24,10 @@ public final class SearchPreview {
     }
     private final Map<Integer,Entry> entries=new LinkedHashMap<>();
     private final NativeZones nativeZones;private final ZoneCatalog catalog;private final StockService stocks;private final JsonStockStore store;private final LightQueries lights;private final KahluaTable rules;
+    private final FindRuntime finds;
     private int cursor;
-    public SearchPreview(NativeZones nativeZones,ZoneCatalog catalog,StockService stocks,JsonStockStore store,LightQueries lights,KahluaTable rules){this.nativeZones=nativeZones;this.catalog=catalog;this.stocks=stocks;this.store=store;this.lights=lights;this.rules=rules;}
+    public SearchPreview(NativeZones nativeZones,ZoneCatalog catalog,StockService stocks,JsonStockStore store,LightQueries lights,KahluaTable rules){this(nativeZones,catalog,stocks,store,lights,rules,null);}
+    public SearchPreview(NativeZones nativeZones,ZoneCatalog catalog,StockService stocks,JsonStockStore store,LightQueries lights,KahluaTable rules,FindRuntime finds){this.nativeZones=nativeZones;this.catalog=catalog;this.stocks=stocks;this.store=store;this.lights=lights;this.rules=rules;this.finds=finds;}
     private static int id(IsoPlayer player){return GameServer.server?player.getOnlineID():player.getPlayerNum();}
     private static int level(IsoPlayer player){return player.getPerkLevel(PerkFactory.Perks.PlantScavenging);}
     static boolean withinRadius(double playerX,double playerY,int targetX,int targetY,double radius){return Double.isFinite(radius)&&radius>=0&&Math.hypot(playerX-targetX,playerY-targetY)<=radius;}
@@ -51,8 +53,10 @@ public final class SearchPreview {
     private boolean visible(IsoPlayer player,IsoGridSquare square){
         if(square==null||player.getCurrentSquare()==null||square.getZ()!=player.getZ()||square.isBlockedTo(player.getCurrentSquare()))return false;
         if(!Boolean.TRUE.equals(call("position",player,square)))return false;
-        if(square==player.getCurrentSquare())return true;
-        return GameServer.server?ServerLOS.instance!=null&&ServerLOS.instance.isCouldSee(player,square):square.isCanSee(player.getPlayerNum());
+        if(Math.hypot(player.getX()-square.getX(),player.getY()-square.getY())<=1.5)return true;
+        for(var adjacent:SightSample.squares(square))if(adjacent!=null&&!adjacent.isBlockedTo(player.getCurrentSquare())
+                &&(GameServer.server?ServerLOS.instance!=null&&ServerLOS.instance.isCouldSee(player,adjacent):adjacent.isCanSee(player.getPlayerNum())))return true;
+        return false;
     }
     public void tick(long now){
         if(GameClient.client||entries.isEmpty())return;
@@ -90,7 +94,7 @@ public final class SearchPreview {
         if(GameServer.server){
             var p=entry.player;probe.light=lights.requestTarget(id(p),(int)Math.floor(p.getX()),(int)Math.floor(p.getY()),(int)Math.floor(p.getZ()),probe.x,probe.y,probe.z,now);
             if(probe.light==null)throw new IllegalStateException("light context already pending");
-        }else {System.out.println("[B42Foraging] LIGHT_SAMPLE request=local trial="+entry.trial+" "+RuntimeBridge.lightDiagnostic(entry.player,square,entry.player.getPlayerNum()));evaluate(entry,square.getLightLevel(entry.player.getPlayerNum()),now);}
+        }else {System.out.println("[B42Foraging] LIGHT_SAMPLE request=local trial="+entry.trial+" "+RuntimeBridge.lightDiagnostic(entry.player,square,entry.player.getPlayerNum()));evaluate(entry,SightSample.local(entry.player,square,entry.player.getPlayerNum()),now);}
     }
     public KahluaTable request(IsoPlayer player){
         Entry entry=entries.get(id(player));if(entry==null||entry.probe==null||entry.probe.light==null)return null;
@@ -103,11 +107,12 @@ public final class SearchPreview {
         System.out.println("[B42Foraging] LIGHT_REQUEST player="+id(player)+" request="+request.id()+" attempt="+attempt+" trial="+entry.trial+" at="+request.targetX()+","+request.targetY()+","+request.targetZ()+" origin="+request.x()+","+request.y()+","+request.z()+" from="+player.getX()+","+player.getY()+","+player.getZ());
         return RuntimeBridge.lightData(request,attempt);
     }
-    public boolean accepted(IsoPlayer player,String requestId,double light,long now){Entry entry=entries.get(id(player));if(entry==null||now>=entry.deadline||entry.probe==null||entry.probe.light==null||!entry.probe.light.id().equals(requestId)||!active(entry,now))return false;evaluate(entry,light,now);return true;}
-    private void evaluate(Entry entry,double light,long now){
-        if(!Double.isFinite(light)||light<0||light>1)return;
+    public boolean accepted(IsoPlayer player,String requestId,SightSample sample,long now){Entry entry=entries.get(id(player));if(entry==null||now>=entry.deadline||entry.probe==null||entry.probe.light==null||!entry.probe.light.id().equals(requestId)||!active(entry,now))return false;evaluate(entry,sample,now);return true;}
+    private void evaluate(Entry entry,SightSample sample,long now){
+        double light=sample.light();
         Probe probe=entry.probe;var square=IsoWorld.instance.currentCell.getGridSquare(probe.x,probe.y,probe.z);
         if(!nearby(entry.player,probe)||!visible(entry.player,square)){finish(entry,"sight_changed",null,null,null,light,now,false);return;}
+        KahluaTable sight=sample.bounded(entry.player,square).data();
         var current=nativeZones.at(probe.x,probe.y);
         if(!current.stream().map(ZoneCatalog.Shape::key).toList().equals(probe.zones.stream().map(ZoneCatalog.Shape::key).toList())){finish(entry,"zone_changed",null,null,null,light,now,false);return;}
         for(var shape:current)catalog.request(shape,StockService.Chunk.at(probe.x,probe.y));
@@ -120,20 +125,22 @@ public final class SearchPreview {
             result=SearchSelection.select(stock,nativeZones.definition(biome).weights(),entry.trialFocus,Math.max(0,bonus),()->ThreadLocalRandom.current().nextDouble(),new SearchSelection.Rules(){
                 public String item(String category){Object value=call("item",currentBiome,category);return value instanceof String?(String)value:null;}
                 public boolean valid(String item,String category){
-                    Object value=call("inspect",entry.player,item,category,currentBiome,square,light);
+                    Object value=call("inspect",entry.player,item,category,currentBiome,square,light,sight);
                     if(!(value instanceof KahluaTable detail))throw new IllegalStateException("invalid item inspection");
                     StringBuilder message=new StringBuilder("[B42Foraging] SEARCH_ITEM player=").append(id(entry.player)).append(" trial=").append(entry.trial).append(" request=").append(probe.light==null?"none":probe.light.id()).append(" zone=").append(shape.id(store.worldId)).append(" category=").append(category).append(" item=").append(item);
-                    for(String key:List.of("valid","reason","level","radius","distance","rawLight","effectiveLight","daylight","torch","outside","hour","rain","snow")){Object field=detail.rawget(key);if(field!=null)message.append(' ').append(key).append('=').append(field.toString().replaceAll("\\s","_"));}
+                    for(String key:List.of("valid","reason","level","radius","distance","rawLight","effectiveLight","dark","seen","daylight","torch","outside","hour","rain","snow")){Object field=detail.rawget(key);if(field!=null)message.append(' ').append(key).append('=').append(field.toString().replaceAll("\\s","_"));}
                     System.out.println(message);return Boolean.TRUE.equals(detail.rawget("valid"));
                 }
             });
             if(result.reason().equals("match"))break;
         }
-        finish(entry,result==null?"no_zone":result.reason(),zoneId,biome,result,light,now,result!=null&&result.reason().equals("match"));
+        boolean matched=result!=null&&result.reason().equals("match");
+        if(matched&&finds!=null&&!finds.discover(entry.player,zoneId,result.category(),result.item(),probe.x,probe.y,probe.z,entry.cadence.distance(entry.player.getX(),entry.player.getY()))){finish(entry,"reveal_failed",zoneId,biome,result,light,now,false);return;}
+        finish(entry,result==null?"no_zone":result.reason(),zoneId,biome,result,light,now,matched);
     }
     private void finish(Entry entry,String reason,String zoneId,String biome,SearchSelection.Result result,double light,long now,boolean matched){
         int x=entry.probe==null?(int)Math.floor(entry.player.getX()):entry.probe.x,y=entry.probe==null?(int)Math.floor(entry.player.getY()):entry.probe.y;
-        System.out.println("[B42Foraging] SEARCH_PROBE trial="+entry.trial+" player="+id(entry.player)+" result="+reason+" focus="+entry.trialFocus+" focusChance="+(result==null?0:result.focusChance())+" category="+(result==null?null:result.category())+" item="+(result==null?null:result.item())+" biome="+biome+" zone="+zoneId+" from="+entry.player.getX()+","+entry.player.getY()+","+entry.player.getZ()+" at="+x+","+y+" facing="+entry.player.getLookAngleRadians()+" light="+(Double.isFinite(light)?Double.toString(light):"unavailable")+" request="+(entry.probe==null||entry.probe.light==null?"none":entry.probe.light.id())+" sends="+(entry.probe==null?0:entry.probe.sends)+" visibility="+(GameServer.server?"server_geometric_LOS":"local_canSee")+" (preview; stock and XP unchanged)");
+        System.out.println("[B42Foraging] SEARCH_PROBE trial="+entry.trial+" player="+id(entry.player)+" result="+reason+" focus="+entry.trialFocus+" focusChance="+(result==null?0:result.focusChance())+" category="+(result==null?null:result.category())+" item="+(result==null?null:result.item())+" biome="+biome+" zone="+zoneId+" from="+entry.player.getX()+","+entry.player.getY()+","+entry.player.getZ()+" at="+x+","+y+" facing="+entry.player.getLookAngleRadians()+" light="+(Double.isFinite(light)?Double.toString(light):"unavailable")+" request="+(entry.probe==null||entry.probe.light==null?"none":entry.probe.light.id())+" sends="+(entry.probe==null?0:entry.probe.sends)+" visibility="+(GameServer.server?"server_geometric_LOS+bound_native_sight":"local_canSee")+" shared="+(finds!=null));
         entry.cadence.finish(matched,x,y,level(entry.player),now);entry.probe=null;lights.cancel(id(entry.player));
     }
 }

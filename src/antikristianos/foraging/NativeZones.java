@@ -18,7 +18,9 @@ public final class NativeZones implements ZoneCatalog.Source {
     public static Map<String,ZoneCatalog.Definition> definitions() {
         KahluaTable system=table(LuaManager.env.rawget("forageSystem"));
         KahluaTable zones=table(system.rawget("zoneDefs")),categories=table(system.rawget("catDefs"));
-        if(!categories.iterator().advance())throw new IllegalStateException("Vanilla category definitions not initialized");
+        if(!zones.iterator().advance())throw new ForageDefinitions.NotReady("zone definitions");
+        if(!categories.iterator().advance())throw new ForageDefinitions.NotReady("category definitions");
+        Map<String,Set<String>> eligible=ForageDefinitions.eligible(system,zones,categories);
         KahluaTable settings=table(system.rawget("abundanceSettings")),sandbox=table(LuaManager.env.rawget("SandboxVars"));
         Map<String,ZoneCatalog.Definition> result=new TreeMap<>();
         var iterator=zones.iterator();
@@ -27,7 +29,7 @@ public final class NativeZones implements ZoneCatalog.Source {
             Map<String,Double> weights=new TreeMap<>();var cat=categories.iterator();
             while(cat.advance()) {
                 String name=(String)cat.getKey();Object value=table(table(cat.getValue()).rawget("zones")).rawget(biome);
-                if(value instanceof Number weight&&weight.doubleValue()>0&&!name.equals("Tracks"))weights.put(name,weight.doubleValue());
+                if(value instanceof Number weight&&weight.doubleValue()>0&&eligible.get(biome).contains(name))weights.put(name,weight.doubleValue());
             }
             Object setting=zone.rawget("abundanceSetting");String settingName=setting instanceof String?(String)setting:"NatureAbundance";
             Object settingIndex=sandbox.rawget(settingName);

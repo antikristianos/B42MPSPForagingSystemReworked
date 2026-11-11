@@ -1,4 +1,4 @@
--- World-integration gate. Regular Vanilla findings/XP are not intercepted in this candidate.
+-- World authority and bound target samples; shared discoveries use separate find-only deltas.
 local moduleName = "B42MPSPForagingSystemReworked"
 local searchStates = {}
 local ticks = 0
@@ -6,7 +6,7 @@ local missingReported = false
 local lastSearch = {}
 local rulesInstalled = false
 local clientReady = false
-local LIGHT_PROTOCOL = 2
+local LIGHT_PROTOCOL = 3
 local LIGHT_REACH_SQUARED = 36
 local lastLightPoll = nil
 
@@ -48,6 +48,8 @@ local function onTick()
                 local player = players:get(index)
                 local request = api.requestLight(player)
                 if request then sendLightRequest(player, request) end
+                local changes = api.findMessages(player)
+                if changes then sendServerCommand(player, moduleName, "finds", changes) end
             end
         end
     end
@@ -64,13 +66,21 @@ local function onTick()
             if type(focus) ~= "string" then focus = "None" end
             local previous = searchStates[index]
             if (enabled and ticks % 120 == 0) or not previous or previous.enabled ~= enabled or previous.focus ~= focus then
-                searchStates[index] = { enabled = enabled, focus = focus }
+                local nonce = previous and previous.nonce
+                if not nonce or (enabled and not previous.enabled) then nonce = getRandomUUID() end
+                searchStates[index] = { enabled = enabled, focus = focus, nonce = nonce }
+                if B42ForagingClient then B42ForagingClient.control(player, enabled, nonce) end
                 if isClient() then
-                    sendClientCommand(player, moduleName, "search", { enabled = enabled, focus = focus })
+                    sendClientCommand(player, moduleName, "search", { enabled = enabled, focus = focus, nonce = nonce })
                 elseif enabled then
                     api.setSearchState(player, true, focus)
                     api.observeLocalLight(player)
                 else api.cancelSearch(player) end
+                if not isClient() then api.setFindControl(player, enabled, nonce) end
+            end
+            if not isClient() and B42ForagingClient then
+                local changes = api.findMessages(player)
+                if changes then B42ForagingClient.apply(player, changes) end
             end
         end
     end
@@ -81,17 +91,20 @@ local function onClientCommand(module, command, player, args)
     local api = bridge()
     if not api or type(args) ~= "table" then return end
     if command == "search" then
+        if type(args.nonce) ~= "string" or #args.nonce < 1 or #args.nonce > 64 or args.nonce:find("%c") then return end
         if args.enabled == true then
             local id = player:getOnlineID()
             local now = getTimestampMs()
             if lastSearch[id] and now - lastSearch[id] < 500 then return end
             lastSearch[id] = now
             api.setSearchState(player, true, type(args.focus) == "string" and args.focus or "None")
+            api.setFindControl(player, true, args.nonce)
             local request = api.requestLight(player)
             if request then sendLightRequest(player, request) end
         else
             lastSearch[player:getOnlineID()] = nil
             api.cancelSearch(player)
+            api.setFindControl(player, false, args.nonce)
         end
     elseif command == "light" then api.acceptLight(player, args) end
 end
@@ -109,13 +122,24 @@ local function inReach(x, y, z, targetX, targetY, targetZ)
     return z == targetZ and dx * dx + dy * dy <= LIGHT_REACH_SQUARED
 end
 
-local function lightReply(player, request, status, value)
-    sendClientCommand(player, moduleName, "light", { requestId = request.requestId, session = request.session, status = status, light = value })
+local function lightReply(player, request, status, value, sample)
+    sendClientCommand(player, moduleName, "light", { requestId = request.requestId, session = request.session, protocol = LIGHT_PROTOCOL,
+        status = status, light = value, dark = sample and sample.dark, seen = sample and sample.seen })
     print("[B42Foraging] LIGHT_CLIENT_REPLY request=" .. request.requestId .. " status=" .. status)
 end
 
 local function onServerCommand(module, command, args)
-    if module ~= moduleName or command ~= "light" or not isClient() or type(args) ~= "table" then return end
+    if module ~= moduleName or not isClient() or type(args) ~= "table" then return end
+    if command == "finds" then
+        if B42ForagingClient then
+            for index = 0, getNumActivePlayers() - 1 do
+                local player = getSpecificPlayer(index)
+                if player and player:getOnlineID() == args.onlineId then B42ForagingClient.apply(player,args); return end
+            end
+        end
+        return
+    end
+    if command ~= "light" then return end
     if not token(args.requestId) or not token(args.session) or not coordinate(args.onlineId) then return end
     print("[B42Foraging] LIGHT_RECEIVED request=" .. args.requestId)
     for index = 0, getNumActivePlayers() - 1 do
@@ -139,8 +163,11 @@ local function onServerCommand(module, command, args)
             local value = square:getLightLevel(index)
             if type(value) ~= "number" or value ~= value or value < 0 or value > 1 then lightReply(player, args, "invalid_light"); return end
             local api = bridge()
-            if api then print("[B42Foraging] LIGHT_SAMPLE request=" .. args.requestId .. " " .. api.lightDiagnostic(player, square, index)) end
-            lightReply(player, args, "ok", value)
+            local sample = api and api.sampleTarget(player, square, index)
+            if type(sample) ~= "table" then lightReply(player, args, "invalid_sight"); return end
+            print("[B42Foraging] LIGHT_SAMPLE request=" .. args.requestId .. " " .. api.lightDiagnostic(player, square, index))
+            print("[B42Foraging] SIGHT_SAMPLE request=" .. args.requestId .. " seen=" .. tostring(sample.seen) .. " dark=" .. tostring(sample.dark))
+            lightReply(player, args, "ok", sample.light, sample)
             return
         end
     end

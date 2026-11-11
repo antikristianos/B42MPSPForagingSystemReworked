@@ -19,4 +19,5 @@ public final class SearchCadence {
     }
     public void finish(boolean discovered,double x,double y,int level,long now){if(!waiting)throw new IllegalStateException("no pending opportunity");if(discovered){foundX=x;foundY=y;}reset(level,now);}
     public boolean waiting(){return waiting;}
+    public double distance(double x,double y){return Math.hypot(x-foundX,y-foundY);}
 }

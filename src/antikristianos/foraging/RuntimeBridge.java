@@ -13,7 +13,7 @@ import zombie.iso.IsoChunk;
 import zombie.iso.IsoWorld;
 import zombie.network.GameClient;
 
-/** Native resource-zone integration. Regular Vanilla findings remain active during zone validation. */
+/** Native authority, shared discoveries and action bridge; Vanilla special paths remain separate. */
 @Exposer.LuaClass(name="B42ForagingBridge")
 public final class RuntimeBridge {
     private RuntimeBridge() {}
@@ -23,6 +23,7 @@ public final class RuntimeBridge {
     private static ZoneCatalog catalog;
     private static KahluaTable searchRules;
     private static SearchPreview search;
+    private static FindRuntime finds;
     private static Path currentSave;
     private static WorldTime lastTime;
     private static LightQueries lights=new LightQueries();
@@ -31,6 +32,7 @@ public final class RuntimeBridge {
     private static final Map<Integer,Long> lightRejectLogs=new LinkedHashMap<>();
     private static final Set<String> observed=new HashSet<>();
     private static boolean failureLogged;
+    private static boolean definitionsWaiting;
     public static long chunkHookCalls,shutdownHookCalls;
     public static boolean beginWorld() {
         if(GameClient.client) return false;
@@ -44,18 +46,24 @@ public final class RuntimeBridge {
             if(!gameVersion.equals("42.22")&&!gameVersion.startsWith("42.22.")) throw new IllegalStateException("unsupported game build "+gameVersion);
             WorldTime now=clock();
             store=new JsonStockStore(save,now);service=new StockService(store);currentSave=save;lastTime=now;
-            lights=new LightQueries();lightRejectLogs.clear();observedChunks.clear();observed.clear();measured.clear();failureLogged=false;nativeZones=null;catalog=null;search=null;
+            lights=new LightQueries();lightRejectLogs.clear();observedChunks.clear();observed.clear();measured.clear();failureLogged=false;definitionsWaiting=false;nativeZones=null;catalog=null;search=null;finds=searchRules==null?null:new FindRuntime(service,searchRules);
             log("WORLD_READY version="+Main.VERSION+" worldId="+store.worldId+" anchor="+store.anchor.hours()+" namespace="+JsonStockStore.NAMESPACE);
             return true;
         } catch(Exception failure) {error("world initialization",failure);return false;}
     }
-    public static void setSearchRules(KahluaTable rules){if(!GameClient.client&&rules!=null&&rules!=searchRules){searchRules=rules;search=null;lights=new LightQueries();log("SEARCH_RULES_READY version="+Main.VERSION+" (preview)");}}
+    public static void setSearchRules(KahluaTable rules){if(!GameClient.client&&rules!=null&&rules!=searchRules){searchRules=rules;search=null;lights=new LightQueries();if(service!=null){if(finds==null)finds=new FindRuntime(service,rules);else finds.setRules(rules);}log("SEARCH_RULES_READY version="+Main.VERSION+" (shared finds)");}}
     public static void setSearchState(IsoPlayer player,boolean enabled,String focus){
         if(GameClient.client||player==null)return;
         if(!enabled){cancelSearch(player);return;}
         observePlayer(player);
-        if(catalog!=null&&searchRules!=null){if(search==null){search=new SearchPreview(nativeZones,catalog,service,store,lights,searchRules);log("SEARCH_PREVIEW_READY worldId="+store.worldId);}search.control(player,true,focus,System.nanoTime()/1_000_000);}
+        if(catalog!=null&&searchRules!=null){if(search==null){search=new SearchPreview(nativeZones,catalog,service,store,lights,searchRules,finds);log("SEARCH_SHARED_READY worldId="+store.worldId);}search.control(player,true,focus,System.nanoTime()/1_000_000);}
     }
+    public static void setFindControl(IsoPlayer player,boolean enabled,String nonce){if(!GameClient.client&&player!=null&&beginWorld()&&finds!=null)finds.control(player,enabled,nonce,System.nanoTime()/1_000_000);}
+    public static KahluaTable findMessages(IsoPlayer player){return !GameClient.client&&finds!=null&&player!=null?finds.messages(player):null;}
+    public static boolean pickupValid(IsoPlayer player,String id,KahluaTable action){return !GameClient.client&&finds!=null&&finds.valid(player,id,action);}
+    public static boolean pickupStart(IsoPlayer player,String id,KahluaTable action){return !GameClient.client&&finds!=null&&finds.start(player,id,action);}
+    public static void pickupCancel(IsoPlayer player,String id,KahluaTable action){if(!GameClient.client&&finds!=null)finds.cancel(player,id,action);}
+    public static boolean pickupComplete(IsoPlayer player,String id,KahluaTable action,zombie.inventory.ItemContainer target){return !GameClient.client&&finds!=null&&finds.complete(player,id,action,target);}
     public static void observePlayer(IsoPlayer player) {
         if(player==null||!beginWorld()) return;
         try {
@@ -63,8 +71,9 @@ public final class RuntimeBridge {
             observedChunks.add(StockService.Chunk.at(x,y));
             if(nativeZones==null) {
                 nativeZones=new NativeZones(IsoWorld.instance.getMetaGrid(),IsoWorld.instance.getBiomeMap(),NativeZones.definitions());
+                definitionsWaiting=false;
                 catalog=new ZoneCatalog(store,service,nativeZones,new ZoneCatalog.Listener(){
-                    public void ready(ZoneStock stock,boolean loaded){long total=stock.categories.values().stream().mapToLong(value->value.base).sum();log("ZONE_READY id="+stock.id+" biome="+stock.biome+" area="+stock.area+" base="+total+" categories="+stock.categories.size()+" loaded="+loaded+" source="+stock.source+" (stock only; Vanilla finds retained)");}
+                    public void ready(ZoneStock stock,boolean loaded){long total=stock.categories.values().stream().mapToLong(value->value.base).sum();log("ZONE_READY id="+stock.id+" biome="+stock.biome+" area="+stock.area+" base="+total+" categories="+stock.categories.size()+" loaded="+loaded+" source="+stock.source+" (authoritative shared stock)");}
                     public void failed(String zone,Exception failure){log("ZONE_BLOCKED id="+zone+" reason="+failure);}
                 });
             }
@@ -75,7 +84,8 @@ public final class RuntimeBridge {
                 rank++;
             }
             lastTime=clock();
-        } catch(Exception failure) {error("native zone observation",failure);}
+        } catch(ForageDefinitions.NotReady pending) {if(!definitionsWaiting){definitionsWaiting=true;log("DEFINITIONS_WAIT "+pending.getMessage());}}
+        catch(Exception failure) {error("native zone observation",failure);}
     }
     public static void tick() {
         if(GameClient.client||store==null)return;
@@ -83,7 +93,8 @@ public final class RuntimeBridge {
             lastTime=clock();
             if(catalog!=null)catalog.pump(lastTime,2048);
             service.working(lastTime);
-            if(search!=null)try{search.tick(System.nanoTime()/1_000_000);}catch(Exception failure){search=null;lights=new LightQueries();error("search preview",failure);}
+            if(search!=null)try{search.tick(System.nanoTime()/1_000_000);}catch(Exception failure){search=null;lights=new LightQueries();error("authoritative search",failure);}
+            if(finds!=null)finds.tick();
         }catch(Exception failure){error("zone stock update",failure);}
     }
     public static KahluaTable requestLight(IsoPlayer player) {
@@ -113,20 +124,22 @@ public final class RuntimeBridge {
     public static boolean acceptLight(IsoPlayer player,KahluaTable data) {
         if(GameClient.client||store==null||player==null||data==null) return false;
         int onlineId=player.getOnlineID();
-        Object value=data.rawget("light"),id=data.rawget("requestId"),session=data.rawget("session");
+        Object id=data.rawget("requestId"),session=data.rawget("session");
         if(!(id instanceof String requestId)||!(session instanceof String responseSession)){lightRejected(onlineId,"malformed_reply");return false;}
         Object status=data.rawget("status");
         if(status instanceof String code&&!code.equals("ok")){
-            String reason=Set.of("search_ended","out_of_range","wrong_floor","missing_square","invalid_light","malformed_request","unsupported_protocol").contains(code)?"client_"+code:"invalid_status";
+            String reason=Set.of("search_ended","out_of_range","wrong_floor","missing_square","invalid_light","invalid_sight","malformed_request","unsupported_protocol").contains(code)?"client_"+code:"invalid_status";
             lightRejected(onlineId,lights.matches(onlineId,requestId,responseSession)?reason:"unbound_status");return false;
         }
-        if(!(value instanceof Number number)){lightRejected(onlineId,"malformed_reply");return false;}
+        if(!(data.rawget("protocol") instanceof Number protocol)||protocol.doubleValue()!=LightQueries.PROTOCOL){lightRejected(onlineId,"unsupported_protocol");return false;}
+        SightSample sample;
+        try{sample=SightSample.decode(data);}catch(IllegalArgumentException malformed){lightRejected(onlineId,"invalid_sight");return false;}
         int x=(int)Math.floor(player.getX()),y=(int)Math.floor(player.getY()),z=(int)Math.floor(player.getZ());
         var request=lights.peek(onlineId);
-        String reason=lights.acceptReason(onlineId,requestId,responseSession,x,y,z,number.doubleValue(),System.nanoTime()/1_000_000);
+        String reason=lights.acceptReason(onlineId,requestId,responseSession,x,y,z,sample.light(),System.nanoTime()/1_000_000);
         if(!reason.equals("accepted")){lightRejected(onlineId,reason);return false;}
-        if(search!=null)try{if(!search.accepted(player,requestId,number.doubleValue(),System.nanoTime()/1_000_000)){lightRejected(onlineId,"search_context_changed");return false;}}catch(Exception failure){search=null;lights=new LightQueries();error("search light result",failure);return false;}
-        log("LIGHT_ACCEPTED onlineId="+onlineId+" request="+requestId+" value="+number.doubleValue()+" at="+request.targetX()+","+request.targetY()+","+request.targetZ()+" from="+x+","+y+","+z+" (measurement only)");
+        if(search!=null)try{if(!search.accepted(player,requestId,sample,System.nanoTime()/1_000_000)){lightRejected(onlineId,"search_context_changed");return false;}}catch(Exception failure){search=null;lights=new LightQueries();error("search light result",failure);return false;}
+        log("LIGHT_ACCEPTED onlineId="+onlineId+" request="+requestId+" value="+sample.light()+" dark="+sample.dark()+" seen="+sample.seen()+" at="+request.targetX()+","+request.targetY()+","+request.targetZ()+" from="+x+","+y+","+z+" (bound native target sample)");
         return true;
     }
     public static void observeLocalLight(IsoPlayer player) {
@@ -140,6 +153,9 @@ public final class RuntimeBridge {
         if(zombie.network.GameServer.server)return "diagnostic=server_not_client_light";
         try{return LightDiagnostics.describe(player,square,index);}
         catch(RuntimeException failure){return "diagnostic=unavailable error="+failure.getClass().getSimpleName();}
+    }
+    public static KahluaTable sampleTarget(IsoPlayer player,zombie.iso.IsoGridSquare square,int index){
+        try{return SightSample.local(player,square,index).data();}catch(RuntimeException unavailable){return null;}
     }
     public static void cancelSearch(IsoPlayer player) {if(!GameClient.client&&player!=null){lights.cancel(player.getOnlineID());if(search!=null)search.control(player,false,null,System.nanoTime()/1_000_000);}}
     public static void chunkUnloading(IsoChunk chunk) {
@@ -161,7 +177,7 @@ public final class RuntimeBridge {
         try {
             service.shutdown(now);
             log("WORLD_CLOSED worldId="+store.worldId+" regular shutdown");
-            store=null;service=null;catalog=null;nativeZones=null;search=null;currentSave=null;observedChunks.clear();observed.clear();measured.clear();lightRejectLogs.clear();lights=new LightQueries();
+            store=null;service=null;catalog=null;nativeZones=null;search=null;finds=null;currentSave=null;observedChunks.clear();observed.clear();measured.clear();lightRejectLogs.clear();lights=new LightQueries();
         } catch(Exception failure) {error("world shutdown",failure);}
     }
     public static WorldTime clock() {

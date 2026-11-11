@@ -63,7 +63,7 @@ function rules.item(biome, category)
     return nil
 end
 
-function rules.inspect(player, item, category, biome, square, rawLight)
+function rules.inspect(player, item, category, biome, square, rawLight, sight)
     local detail = { rawLight = rawLight }
     local function done(valid, reason) detail.valid = valid; detail.reason = reason; return detail end
     local definition, catDef, zoneDef = forageSystem.itemDefs[item], forageSystem.catDefs[category], forageSystem.zoneDefs[biome]
@@ -90,6 +90,14 @@ function rules.inspect(player, item, category, biome, square, rawLight)
     if not forageSystem.isValidSquare(square, definition, catDef) then return done(false, "invalid_square") end
     local level = forageSystem.getPerkLevel(player, definition)
     detail.level = level
+    if type(sight) ~= "table" or type(sight.dark) ~= "number" or sight.dark ~= sight.dark or sight.dark < 0 or sight.dark >= math.huge
+        or type(sight.seen) ~= "number" or sight.seen ~= math.floor(sight.seen) or sight.seen < 0 or sight.seen > 31 then
+        return done(false, "missing_sight")
+    end
+    detail.dark, detail.seen = sight.dark, sight.seen
+    local onSquare = dx * dx + dy * dy <= 1.5 * 1.5
+    local canSee = sight.seen % 2 == 1 or (level >= 5 and math.floor(sight.seen / 2) > 0)
+    if not onSquare and not canSee then return done(false, "not_visible") end
     local bonus = forageSystem.getTraitVisionBonus(player) + forageSystem.getProfessionVisionBonus(player)
     local minimum, maximum = forageSystem.minVisionRadius, forageSystem.maxVisionRadius + bonus
     local radius = clamp(minimum + forageSystem.getLevelVisionBonus(level) + bonus, minimum, maximum)
@@ -105,9 +113,8 @@ function rules.inspect(player, item, category, biome, square, rawLight)
     if detail.outside then light = math.max(light, detail.daylight) end
     detail.effectiveLight = light
     local penalty = clamp(1 - (1 - light) * forageSystem.getDarknessEffectReduction(player), 1 - forageSystem.lightPenaltyMax / 100, 1)
-    -- The server has no per-player native darkMulti. Until its table-light exception is proven,
-    -- fail closed away from the native on-square distance instead of assuming a lit surface.
-    if dx * dx + dy * dy > 1.5 * 1.5 and 1 - penalty >= forageSystem.lightPenaltyCutoff / 100 then detail.radius = forageSystem.darkVisionRadius; return done(false, "darkness_cutoff") end
+    -- Native per-slot target darkness is measured with the same bound request as RGB/visibility.
+    if not onSquare and sight.dark <= 2 and 1 - penalty >= forageSystem.lightPenaltyCutoff / 100 then detail.radius = forageSystem.darkVisionRadius; return done(false, "darkness_cutoff") end
     if 1 - penalty >= forageSystem.lightPenaltyCutoff / 100 then radius = forageSystem.darkVisionRadius else radius = radius * penalty end
     radius = clamp(radius, minimum, maximum)
     detail.radius = radius
@@ -115,6 +122,52 @@ function rules.inspect(player, item, category, biome, square, rawLight)
     return done(true, "accepted")
 end
 
-function rules.valid(player, item, category, biome, square, rawLight)
-    return rules.inspect(player, item, category, biome, square, rawLight).valid
+function rules.valid(player, item, category, biome, square, rawLight, sight)
+    return rules.inspect(player, item, category, biome, square, rawLight, sight).valid
+end
+
+function rules.materialize(player, itemType)
+    local definition = forageSystem.itemDefs[itemType]
+    if not definition then return nil end
+    local minimum, maximum = definition.minCount or 1, definition.maxCount or 1
+    local count = minimum == maximum and minimum or ZombRand(minimum, maximum) + 1
+    if count < 1 or count > 10000 then return nil end
+    local items = ArrayList.new()
+    for index = 1, count do
+        local item = instanceItem(itemType)
+        if not item then return nil end
+        items:add(item)
+    end
+    for _, callback in ipairs(definition.spawnFuncs or {}) do items = callback(player, player:getInventory(), definition, items) or items end
+    return items
+end
+
+function rules.award(player, itemType, distance)
+    local before = player:getXp():getXP(Perks.PlantScavenging)
+    forageSystem.giveXP(player, forageSystem.itemDefs[itemType], distance)
+    return { before = before, after = player:getXp():getXP(Perks.PlantScavenging), distance = distance }
+end
+
+function rules.canIssue(player, container, items)
+    if not container or not items or items:isEmpty() then return false end
+    local weight = 0
+    for index = 0, items:size() - 1 do
+        local item = items:get(index)
+        if not item or not container:isItemAllowed(item) then return false end
+        weight = weight + item:getUnequippedWeight()
+    end
+    if not container:hasRoomFor(player, weight) then return false end
+    local inventory = player:getInventory()
+    if container ~= inventory and container:isInCharacterInventory(player) then
+        local reduction = container:getWeightReduction() / 100
+        if not inventory:hasRoomFor(player, weight * (1 - reduction)) then return false end
+    end
+    return true
+end
+
+function rules.issued(player, container, items)
+    for index = 0, items:size() - 1 do sendAddItemToContainer(container, items:get(index)) end
+    forageSystem.doFatiguePenalty(player)
+    forageSystem.doEndurancePenalty(player)
+    triggerEvent("OnContainerUpdate")
 end

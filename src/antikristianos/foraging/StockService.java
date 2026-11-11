@@ -39,7 +39,7 @@ public final class StockService {
         ZoneStock zone=Objects.requireNonNull(zones.get(zoneId));zone.advance(now);
         ZoneStock.Category pool=zone.categories.get(category);
         if(pool==null||!pool.reserve()) return null;
-        Find find=new Find(UUID.randomUUID().toString(),zoneId,category,item,count,finder,x,y,z,now.hours()+1);
+        Find find=new Find("b42f:"+UUID.randomUUID(),zoneId,category,item,count,finder,x,y,z,now.hours()+1);
         finds.put(find.id,find);return find;
     }
     public boolean start(String id,String player,String action,WorldTime now) {
@@ -88,6 +88,8 @@ public final class StockService {
         for(ZoneStock zone:zones.values()) {store.save(zone);store.removeWorking(zone.id);}
     }
     public int openFinds() {return finds.size();}
+    public Find find(String id){return finds.get(id);}
+    public List<Find> finds(){return List.copyOf(finds.values());}
     public static Map<String,Double> focus(Map<String,Double> weights,String focus,double bonus,boolean available) {
         if(!Double.isFinite(bonus)||bonus<0) throw new IllegalArgumentException("focus bonus");
         double total=weights.values().stream().mapToDouble(Double::doubleValue).sum();
