@@ -136,6 +136,11 @@ public final class RuntimeBridge {
         float value=square.getLightLevel(index);
         if(Float.isFinite(value)&&value>=0&&value<=1&&measured.add(index)) log("LIGHT_LOCAL player="+index+" value="+value+" (measurement only)");
     }
+    public static String lightDiagnostic(IsoPlayer player,zombie.iso.IsoGridSquare square,int index) {
+        if(zombie.network.GameServer.server)return "diagnostic=server_not_client_light";
+        try{return LightDiagnostics.describe(player,square,index);}
+        catch(RuntimeException failure){return "diagnostic=unavailable error="+failure.getClass().getSimpleName();}
+    }
     public static void cancelSearch(IsoPlayer player) {if(!GameClient.client&&player!=null){lights.cancel(player.getOnlineID());if(search!=null)search.control(player,false,null,System.nanoTime()/1_000_000);}}
     public static void chunkUnloading(IsoChunk chunk) {
         chunkHookCalls++;

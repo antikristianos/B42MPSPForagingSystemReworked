@@ -9,6 +9,11 @@
       "Sha256": "BC449D61D060D5C23E14F18D654ABEEBE1461A267B5C593B8DF90185D0E79EF4"
     },
     {
+      "Path": "antikristianos/foraging/LightDiagnostics.class",
+      "Size": 4047,
+      "Sha256": "E83A9F31D7896F08AAFD801607536D69118D618CE12520F5991B11ED6DCE928B"
+    },
+    {
       "Path": "antikristianos/foraging/LightQueries$Pending.class",
       "Size": 629,
       "Sha256": "9E9364CA9E03534450830A389F9CBDDB915395EC7D14594747E5C4A184441872"
@@ -26,7 +31,7 @@
     {
       "Path": "antikristianos/foraging/Main.class",
       "Size": 762,
-      "Sha256": "2ECCBFDA612865FD0AAF2051AE1503D1862442B02FF1A57159B4D7175431DA72"
+      "Sha256": "E67ACBD49BA8FF60D7BF3D796E9F82417BCDCDDBC81D95C753456B6E4A1B8E35"
     },
     {
       "Path": "antikristianos/foraging/NativeZones$1.class",
@@ -65,8 +70,8 @@
     },
     {
       "Path": "antikristianos/foraging/RuntimeBridge.class",
-      "Size": 14484,
-      "Sha256": "9E8EBE16B0AE97582B4899B6BB1959947B9FB57760461B033DC993FFB9A9244C"
+      "Size": 14955,
+      "Sha256": "A8098670C87C94D4FA881E362914175A3C2DF250784E8D4A4BA46C594D1F991C"
     },
     {
       "Path": "antikristianos/foraging/SearchCadence.class",
@@ -75,8 +80,8 @@
     },
     {
       "Path": "antikristianos/foraging/SearchPreview$1.class",
-      "Size": 1761,
-      "Sha256": "F349B17833568683611450DD655EDBA50F96FF941E6333C237B719793FDAE090"
+      "Size": 4172,
+      "Sha256": "C520FC7741C70D4B7EE45503CBE8C3AA0F989DEBFF617B0209F0F7881401A680"
     },
     {
       "Path": "antikristianos/foraging/SearchPreview$Entry.class",
@@ -85,13 +90,13 @@
     },
     {
       "Path": "antikristianos/foraging/SearchPreview$Probe.class",
-      "Size": 1074,
-      "Sha256": "5E1F85D72EA9F3D6742168D69B75626E6A528C08A7BC2F250788C27B24AA41BC"
+      "Size": 1090,
+      "Sha256": "72C7ADD58E9B6A9CDCBF7DE250D2DF052EE791530557574912D9A030E40B7B18"
     },
     {
       "Path": "antikristianos/foraging/SearchPreview.class",
-      "Size": 16490,
-      "Sha256": "A1DF2234F6E6552CC5D6F73F67AAA46A4229409EC1A039EA168C5DE4776444E5"
+      "Size": 17713,
+      "Sha256": "6FA631DCEBE993C00E895730B585402CD50397AC8AE2B0A732067C10C00EEC9C"
     },
     {
       "Path": "antikristianos/foraging/SearchSelection$Result.class",

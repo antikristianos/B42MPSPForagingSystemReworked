@@ -3,16 +3,16 @@
   "Project": "B42MPSPForagingSystemReworked",
   "Repository": "antikristianos/B42MPSPForagingSystemReworked",
   "Branch": "wip",
-  "Tag": "wip-1.93",
-  "ModVersion": "0.2.2",
-  "CollectionVersion": "1.93",
+  "Tag": "wip-1.94",
+  "ModVersion": "0.2.3",
+  "CollectionVersion": "1.94",
   "WorkshopId": 3802764936,
   "WorkshopUrl": "https://steamcommunity.com/sharedfiles/filedetails/?id=3802764936",
-  "UploadManifestSha256": "B3E716962CC30F1B57F10BBFDA0EC7715A3FD789DDF2D04DA55D8FCB151656B4",
+  "UploadManifestSha256": "88B60FC7A63A7DD11EAE2D421F51E95838905C1E600C6A67517E726986C21B7C",
   "Artifact": {
     "Path": "mods/B42MPSPForagingSystemReworked_WIP/42.22/media/java/B42MPSPForagingSystemReworked.jar",
-    "Size": 70145,
-    "Sha256": "5BEF982A22CF8CA3A798680D3AB377C22CB333FE39864CEBEAB318002BA900D5"
+    "Size": 74367,
+    "Sha256": "DEB36DA5E62760E4B6B2CE656C4D14BF10D574FA5A7099737DD2F58BE47D7D28"
   },
   "AdditionalArtifacts": [],
   "Sources": [
@@ -24,17 +24,17 @@
     {
       "Path": "MANIFEST.MF",
       "Size": 167,
-      "Sha256": "07C3098BA090788B4106585D8E05CB41C146AC543273A01032C8B69040CD92C1"
+      "Sha256": "408CD3F240542A187771D3AF1E14BB06EAB7BED170A9A46976258D047AD50071"
     },
     {
       "Path": "README.md",
       "Size": 1479,
-      "Sha256": "E7DC5DD5777E1B6B143A44D313F415F42791EB45E5F7EF09677458427EAF25C1"
+      "Sha256": "B8566713DAB659339A00ECA801885E1F3FF0D5022E011D5C05DB74A91BF5A743"
     },
     {
       "Path": "build.json",
-      "Size": 7298,
-      "Sha256": "E5BCE626D72FAF77216A6B5BFCDA64AB0CB9C4F5389022F7CD10E14C982D87E1"
+      "Size": 7483,
+      "Sha256": "75B7AF792E9DA46BD5045ABD9262FDF21FF738CC600BF3BB89B8BF0E3629C855"
     },
     {
       "Path": "build.ps1",
@@ -43,23 +43,28 @@
     },
     {
       "Path": "runtime/42.22/media/lua/shared/B42ForagingIntegration.lua",
-      "Size": 7299,
-      "Sha256": "497E920B360DA778BC5CC6B23AF044547A0F6DF920A326404DC64DF1A216F6E0"
+      "Size": 7476,
+      "Sha256": "39C55E04C2A5DE0E3D1165E7F5C4657BE2D820B824A23C012CD59F7BF6C9FEB8"
     },
     {
       "Path": "runtime/42.22/media/lua/shared/B42ForagingRules.lua",
-      "Size": 6299,
-      "Sha256": "FF2FDB0BA5D5925D3AC6F8E58BA861DA31BC54BBD2FEF6CA07ABED50061732A4"
+      "Size": 7591,
+      "Sha256": "BCAD3AA35796D385C89F6704E13ED137CFCE74BAEB75387D8C14AC377F9DF974"
     },
     {
       "Path": "runtime/42.22/mod.info",
       "Size": 564,
-      "Sha256": "BB8EE2B2F63AD141807BF632BDA34B190C711AFB00B0F986B0915D0AF072E5FE"
+      "Sha256": "9F8288846C3BDE364AA16D02C566E09F7D60D8D061867F18D0CE7143A59C5964"
     },
     {
       "Path": "src/antikristianos/foraging/JsonStockStore.java",
       "Size": 11331,
       "Sha256": "65984D95002AFA2BC827A8BF71D42E4F44D273CA443D2FE5400EE86E60A8CD25"
+    },
+    {
+      "Path": "src/antikristianos/foraging/LightDiagnostics.java",
+      "Size": 2532,
+      "Sha256": "3F7F2FC12F107C3DFF5C625C31F5DC11B0DB00DC8DDAD85B42EC543D24000D10"
     },
     {
       "Path": "src/antikristianos/foraging/LightQueries.java",
@@ -69,7 +74,7 @@
     {
       "Path": "src/antikristianos/foraging/Main.java",
       "Size": 421,
-      "Sha256": "770C69D1E970AA4E2F49A8B6C4BC519810DFA5FDF5AD61665EC87BD2F596DD93"
+      "Sha256": "279CF26363D80CA12021B6A71E1C1F5F3BAE236C4CFD34F776EE10658695058E"
     },
     {
       "Path": "src/antikristianos/foraging/NativeZones.java",
@@ -98,8 +103,8 @@
     },
     {
       "Path": "src/antikristianos/foraging/RuntimeBridge.java",
-      "Size": 11727,
-      "Sha256": "A11505EF19EA85B1EC92E66FC9ECF8761C627D00BDA3527370A5201A7C1417EE"
+      "Size": 12109,
+      "Sha256": "2DE87940EB81E1C898CF3748AA4F733DB2C1400FAB69A3C81693B5CB94569321"
     },
     {
       "Path": "src/antikristianos/foraging/SearchCadence.java",
@@ -108,8 +113,8 @@
     },
     {
       "Path": "src/antikristianos/foraging/SearchPreview.java",
-      "Size": 11834,
-      "Sha256": "4CD15C1DB445A496A926861269E4242E642283C3E40D392DA5D925F30FF1EA00"
+      "Size": 13744,
+      "Sha256": "9D75EC832E6F29385589B24B845AAB011C1ACD9FE6E3B6584094197E56C8DDA8"
     },
     {
       "Path": "src/antikristianos/foraging/SearchSelection.java",

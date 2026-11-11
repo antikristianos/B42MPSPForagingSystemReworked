@@ -138,6 +138,8 @@ local function onServerCommand(module, command, args)
             if not square then lightReply(player, args, "missing_square"); return end
             local value = square:getLightLevel(index)
             if type(value) ~= "number" or value ~= value or value < 0 or value > 1 then lightReply(player, args, "invalid_light"); return end
+            local api = bridge()
+            if api then print("[B42Foraging] LIGHT_SAMPLE request=" .. args.requestId .. " " .. api.lightDiagnostic(player, square, index)) end
             lightReply(player, args, "ok", value)
             return
         end

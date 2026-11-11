@@ -63,17 +63,33 @@ function rules.item(biome, category)
     return nil
 end
 
-function rules.valid(player, item, category, biome, square, rawLight)
+function rules.inspect(player, item, category, biome, square, rawLight)
+    local detail = { rawLight = rawLight }
+    local function done(valid, reason) detail.valid = valid; detail.reason = reason; return detail end
     local definition, catDef, zoneDef = forageSystem.itemDefs[item], forageSystem.catDefs[category], forageSystem.zoneDefs[biome]
-    if not definition or not catDef or not zoneDef or not square then return false end
+    if not definition then return done(false, "missing_item") end
+    if not catDef then return done(false, "missing_category") end
+    if not zoneDef then return done(false, "missing_biome") end
+    if not square then return done(false, "missing_square") end
+    local climate = getClimateManager()
+    detail.outside = square:isOutside()
+    detail.daylight = climate:getDayLightStrength()
+    detail.torch = player:getTorchStrength()
+    detail.rain = climate:getPrecipitationIntensity(); detail.snow = climate:getSnowStrength()
+    if getGameTime then local time = getGameTime(); if time then detail.hour = time:getTimeOfDay() end end
+    local dx, dy = player:getX() - square:getX(), player:getY() - square:getY()
+    detail.distance = math.sqrt(dx * dx + dy * dy)
     for _, test in ipairs(forageSystem.isForageableFuncs) do
         local callback = type(test) == "string" and forageSystem[test] or test
         if test ~= "isValidMonthInternal" and callback ~= forageSystem.isValidMonthInternal then
-            if type(callback) ~= "function" or not callback(player, definition, zoneDef) then return false end
+            local name = type(test) == "string" and test or "custom"
+            if type(callback) ~= "function" then return done(false, "missing_predicate:" .. name) end
+            if not callback(player, definition, zoneDef) then return done(false, "predicate:" .. name) end
         end
     end
-    if not forageSystem.isValidSquare(square, definition, catDef) then return false end
+    if not forageSystem.isValidSquare(square, definition, catDef) then return done(false, "invalid_square") end
     local level = forageSystem.getPerkLevel(player, definition)
+    detail.level = level
     local bonus = forageSystem.getTraitVisionBonus(player) + forageSystem.getProfessionVisionBonus(player)
     local minimum, maximum = forageSystem.minVisionRadius, forageSystem.maxVisionRadius + bonus
     local radius = clamp(minimum + forageSystem.getLevelVisionBonus(level) + bonus, minimum, maximum)
@@ -84,15 +100,21 @@ function rules.valid(player, item, category, biome, square, rawLight)
     local vision = stance(player) * forageSystem.getCategoryBonus(player, catDef) * forageSystem.getHungerBonus(player, definition)
     radius = radius * vision; maximum = math.min(maximum * vision, forageSystem.visionRadiusCap); minimum = minimum * vision
     local light = rawLight
-    if square == player:getCurrentSquare() then light = math.max(light, math.min(1, player:getTorchStrength())) end
+    if square == player:getCurrentSquare() then light = math.max(light, math.min(1, detail.torch)) end
     if light > 0.8 then light = 1 end
-    if square:isOutside() then light = math.max(light, getClimateManager():getDayLightStrength()) end
+    if detail.outside then light = math.max(light, detail.daylight) end
+    detail.effectiveLight = light
     local penalty = clamp(1 - (1 - light) * forageSystem.getDarknessEffectReduction(player), 1 - forageSystem.lightPenaltyMax / 100, 1)
     -- The server has no per-player native darkMulti. Until its table-light exception is proven,
     -- fail closed away from the native on-square distance instead of assuming a lit surface.
-    local dx, dy = player:getX() - square:getX(), player:getY() - square:getY()
-    if dx * dx + dy * dy > 1.5 * 1.5 and 1 - penalty >= forageSystem.lightPenaltyCutoff / 100 then return false end
+    if dx * dx + dy * dy > 1.5 * 1.5 and 1 - penalty >= forageSystem.lightPenaltyCutoff / 100 then detail.radius = forageSystem.darkVisionRadius; return done(false, "darkness_cutoff") end
     if 1 - penalty >= forageSystem.lightPenaltyCutoff / 100 then radius = forageSystem.darkVisionRadius else radius = radius * penalty end
     radius = clamp(radius, minimum, maximum)
-    return dx * dx + dy * dy <= radius * radius
+    detail.radius = radius
+    if dx * dx + dy * dy > radius * radius then return done(false, "outside_item_radius") end
+    return done(true, "accepted")
+end
+
+function rules.valid(player, item, category, biome, square, rawLight)
+    return rules.inspect(player, item, category, biome, square, rawLight).valid
 end
